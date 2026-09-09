@@ -882,9 +882,12 @@ export default function ReadingRoom() {
                     onSelect={setSelectedBook}
                   />
                 )}
-                {lastDismissedId && !allDismissed && <UndoBar onUndo={() => undoDismiss(lastDismissedId)} />}
-                {previousRecs && <UndoBar message="Recomendaciones actualizadas." actionLabel="deshacer actualización" onUndo={undoRefresh} />}
-              </>
+                {dismissToastVisible && lastDismissedId && !allDismissed && (
+                  <UndoBar onUndo={() => undoDismiss(lastDismissedId)} onClose={() => setDismissToastVisible(false)} />
+                )}
+                {refreshToastVisible && previousRecs && (
+                  <UndoBar message="Recomendaciones actualizadas." actionLabel="deshacer actualización" onUndo={undoRefresh} onClose={() => setRefreshToastVisible(false)} />
+                )}              </>
             )}
           </>
         )}
@@ -1421,11 +1424,16 @@ function TrashView({ recs, onRestore, onRestoreAll, onBack }) {
   );
 }
 
-function UndoBar({ onUndo, message = "Recomendación descartada.", actionLabel = "deshacer" }) {
+function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", actionLabel = "deshacer" }) {
   return (
-    <div className="rr-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 18px", marginTop: "14px", position: "sticky", bottom: "16px", background: PALETTE.white }}>
+    <div className="rr-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "14px 18px", marginTop: "14px", position: "sticky", bottom: "16px", background: PALETTE.white }}>
       <span style={{ fontSize: "13px" }}>{message}</span>
-      <button className="rr-link" onClick={onUndo}>{actionLabel}</button>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+        <button className="rr-link" onClick={onUndo}>{actionLabel}</button>
+        <button className="rr-icon-btn" onClick={onClose} aria-label="Cerrar aviso" title="Cerrar">
+          <X size={15} strokeWidth={1.6} />
+        </button>
+      </div>
     </div>
   );
 }
