@@ -723,6 +723,31 @@ export default function ReadingRoom() {
     return arr.length ? arr[arr.length - 1] : null;
   }, [dismissed]);
 
+  // Los avisos flotantes de "deshacer" se ocultan solos a los 10 segundos,
+  // o antes si se cierran a mano con la X.
+  const [dismissToastVisible, setDismissToastVisible] = useState(false);
+  const [refreshToastVisible, setRefreshToastVisible] = useState(false);
+
+  useEffect(() => {
+    if (!lastDismissedId) {
+      setDismissToastVisible(false);
+      return;
+    }
+    setDismissToastVisible(true);
+    const t = setTimeout(() => setDismissToastVisible(false), 10000);
+    return () => clearTimeout(t);
+  }, [lastDismissedId]);
+
+  useEffect(() => {
+    if (!previousRecs) {
+      setRefreshToastVisible(false);
+      return;
+    }
+    setRefreshToastVisible(true);
+    const t = setTimeout(() => setRefreshToastVisible(false), 10000);
+    return () => clearTimeout(t);
+  }, [previousRecs]);
+
   const visibleRecs = useMemo(() => {
     let list = allRecs.filter((r) => !dismissed.has(r.id));
     if (activeGenre === "guardados") list = list.filter((r) => saved.has(r.id));
