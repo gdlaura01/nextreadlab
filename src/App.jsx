@@ -40,10 +40,12 @@ const GOODREADS_SHELVES = ["read", "currently-reading", "to-read"];
 // un proxy público que sí las añade. Ninguno de estos servicios gratuitos
 // garantiza un tiempo de actividad del 100%, así que probamos varios en
 // orden: si el primero falla o no responde, seguimos con el siguiente antes
-// de dar el conjunto por fallido.
+// de dar el conjunto por fallido. (corsproxy.io quedó fuera de esta lista
+// porque ahora exige registro y clave de API incluso en su plan gratuito).
 const CORS_PROXIES = [
-  (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
 ];
 
 function parseGoodreadsRssXml(xmlText, shelf) {
