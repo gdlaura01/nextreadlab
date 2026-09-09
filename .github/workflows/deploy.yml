@@ -24,15 +24,18 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
       - name: Compilar
         run: npm run build
         env:
+          # Opcional: si has añadido VITE_GOOGLE_BOOKS_API_KEY como secreto del
+          # repositorio (Settings → Secrets and variables → Actions), se usará
+          # aquí. Si no existe ningún secreto con ese nombre, la app funciona
+          # igual, solo que con el límite de peticiones sin clave.
           VITE_GOOGLE_BOOKS_API_KEY: ${{ secrets.VITE_GOOGLE_BOOKS_API_KEY }}
 
       - name: Preparar el resultado para Pages
