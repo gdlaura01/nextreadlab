@@ -172,9 +172,12 @@ function withKey(url) {
 // vez de lanzarlas todas a la vez, y reintenta con espera creciente si
 // Google responde con un 429 (demasiadas peticiones).
 async function fetchWithRetry(url, { retries = 4, baseDelay = 1200 } = {}) {
+  // 429 = demasiadas peticiones; 500/502/503/504 = fallos pasajeros del
+  // propio servidor de Google, no relacionados con tu clave ni tu código.
+  const transientStatuses = [429, 500, 502, 503, 504];
   for (let attempt = 0; attempt <= retries; attempt++) {
     const r = await fetch(withKey(url));
-    if (r.status !== 429) return r;
+    if (!transientStatuses.includes(r.status)) return r;
     await sleep(baseDelay * (attempt + 1));
   }
   return fetch(withKey(url));
