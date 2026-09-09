@@ -63,9 +63,28 @@ function parseGoodreadsRssXml(xmlText, shelf) {
     };
   });
 }
+// Tu propio proxy (un Cloudflare Worker que tú controlas — ver README,
+// "Tu propio proxy con Cloudflare Workers"). Si lo configuras, se usa
+// siempre primero, por ser el más fiable; si no lo configuras, la app
+// sigue funcionando con los proxies públicos de abajo como única vía.
+const OWN_PROXY_URL = import.meta.env.VITE_GOODREADS_PROXY_URL || "";
 
 async function fetchGoodreadsShelf(userId, shelf) {
   const goodreadsUrl = `https://www.goodreads.com/review/list_rss/${userId}?shelf=${shelf}`;
+
+  if (OWN_PROXY_URL) {
+    try {
+      const r = await fetch(`${OWN_PROXY_URL}?userId=${encodeURIComponent(userId)}&shelf=${encodeURIComponent(shelf)}`);
+      if (r.ok) {
+        const xmlText = await r.text();
+        const rows = parseGoodreadsRssXml(xmlText, shelf);
+        if (rows !== null) return rows;
+      }
+    } catch {
+      // si tu propio proxy falla puntualmente, seguimos con los públicos de abajo
+    }
+  }
+
   let lastError = new Error("No se pudo leer esa estantería.");
   for (const buildProxyUrl of CORS_PROXIES) {
     try {
