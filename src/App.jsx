@@ -37,13 +37,19 @@ const GOODREADS_SHELVES = ["read", "currently-reading", "to-read"];
 
 // Goodreads no permite leer su feed RSS directamente desde el navegador
 // (no envía las cabeceras CORS necesarias), así que lo pedimos a través de
-// un proxy público y gratuito que sí las añade. Es la única forma de
-// conectar la cuenta sin pasar por una terminal ni un servidor propio.
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+// un proxy público que sí las añade. Ninguno de estos servicios gratuitos
+// garantiza un tiempo de actividad del 100%, así que probamos varios en
+// orden: si el primero falla o no responde, seguimos con el siguiente antes
+// de dar el conjunto por fallido.
+const CORS_PROXIES = [
+  (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+];
 
 function parseGoodreadsRssXml(xmlText, shelf) {
   const doc = new DOMParser().parseFromString(xmlText, "text/xml");
-  if (doc.querySelector("parsererror")) return [];
+  if (doc.querySelector("parsererror")) return null;
+  if (!doc.querySelector("rss, channel")) return null;
   return Array.from(doc.querySelectorAll("item")).map((item) => {
     const text = (selector) => item.querySelector(selector)?.textContent?.trim() || "";
     return {
@@ -58,12 +64,28 @@ function parseGoodreadsRssXml(xmlText, shelf) {
 
 async function fetchGoodreadsShelf(userId, shelf) {
   const goodreadsUrl = `https://www.goodreads.com/review/list_rss/${userId}?shelf=${shelf}`;
-  const r = await fetch(`${CORS_PROXY}${encodeURIComponent(goodreadsUrl)}`);
-  if (!r.ok) throw new Error("No se pudo leer esa estantería.");
-  const xmlText = await r.text();
-  return parseGoodreadsRssXml(xmlText, shelf);
+  let lastError = new Error("No se pudo leer esa estantería.");
+  for (const buildProxyUrl of CORS_PROXIES) {
+    try {
+      const r = await fetch(buildProxyUrl(goodreadsUrl));
+      if (!r.ok) {
+        lastError = new Error(`El servicio intermediario respondió con un error (${r.status}).`);
+        continue;
+      }
+      const xmlText = await r.text();
+      const rows = parseGoodreadsRssXml(xmlText, shelf);
+      if (rows === null) {
+        lastError = new Error("La respuesta no tenía el formato esperado.");
+        continue;
+      }
+      return rows;
+    } catch (e) {
+      lastError = e;
+      // seguimos con el siguiente proxy de la lista
+    }
+  }
+  throw lastError;
 }
-
 // Conecta con la cuenta de Goodreads directamente desde el navegador: sin
 // terminal, sin instalar nada. Lanza un error legible si algo falla, para
 // mostrarlo tal cual al usuario.
