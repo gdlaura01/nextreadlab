@@ -24,7 +24,7 @@ const DISMISSED_KEY = "next-read-lab:dismissed";
 const AVOIDED_GENRES_KEY = "next-read-lab:avoided-genres";
 const GOODREADS_USER_KEY = "next-read-lab:goodreads-user-id";
 const LAST_IDENTITY_KEY = "next-read-lab:last-identity";
-
+const LIBRARY_BOOKS_KEY = "next-read-lab:library-books";
 // Cada persona que usa la app en este mismo ordenador (una cuenta de Goodreads
 // conectada, o un csv con un nombre de archivo distinto) tiene su propia
 // "identidad": sus guardados, descartados y análisis se guardan bajo una
@@ -436,6 +436,7 @@ export default function ReadingRoom() {
       setDismissed(new Set(loadJSON(scopedKey(DISMISSED_KEY, lastIdentity)) || []));
       setSaved(new Set(loadJSON(scopedKey(SAVED_KEY, lastIdentity)) || []));
       setAvoidedGenres(new Set(loadJSON(scopedKey(AVOIDED_GENRES_KEY, lastIdentity)) || []));
+      setLibraryBooks(loadJSON(scopedKey(LIBRARY_BOOKS_KEY, lastIdentity)) || null);
       setStage("ready");
     }
   }, []);
@@ -567,6 +568,7 @@ export default function ReadingRoom() {
       setStage("ready");
       setAnnouncement(`Listo. ${finalRecs.length} recomendaciones encontradas.`);
       saveJSON(scopedKey(STORAGE_KEY, newIdentityKey), { profile: newProfile, allRecs: finalRecs });
+      saveJSON(scopedKey(LIBRARY_BOOKS_KEY, newIdentityKey), rows);
       localStorage.setItem(LAST_IDENTITY_KEY, newIdentityKey);
     } catch (e) {
       console.error(e);
@@ -595,6 +597,7 @@ export default function ReadingRoom() {
       localStorage.removeItem(scopedKey(DISMISSED_KEY, identityKey));
       localStorage.removeItem(scopedKey(SAVED_KEY, identityKey));
       localStorage.removeItem(scopedKey(AVOIDED_GENRES_KEY, identityKey));
+      localStorage.removeItem(scopedKey(LIBRARY_BOOKS_KEY, identityKey));
       if (localStorage.getItem(LAST_IDENTITY_KEY) === identityKey) {
         localStorage.removeItem(LAST_IDENTITY_KEY);
       }
