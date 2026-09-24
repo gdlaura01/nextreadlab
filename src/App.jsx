@@ -1495,16 +1495,36 @@ function GlobalStyle() {
       * { box-sizing: border-box; }
       .rr-title { font-family: 'Fraunces', serif; font-weight: 500; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
-      .rr-diamond { width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0; }
+      .rr-diamond {
+        width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0;
+        animation: rr-diamond-breathe 4s ease-in-out infinite;
+      }
+      @keyframes rr-diamond-breathe {
+        0%, 100% { transform: rotate(45deg) scale(1); }
+        50% { transform: rotate(45deg) scale(1.25); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .rr-diamond { animation: none; }
+      }
       .rr-card { background: ${PALETTE.white}; border: 1px solid #EDE6D0; border-radius: 18px; box-shadow: 0 4px 16px rgba(78,34,15,0.06); }
-      .rr-card-clickable { transition: transform 0.12s ease, box-shadow 0.12s ease; }
+      .rr-card-clickable { position: relative; overflow: hidden; transition: transform 0.12s ease, box-shadow 0.12s ease; }
       .rr-card-clickable:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(78,34,15,0.09); }
+      .rr-card-clickable::after {
+        content: ""; position: absolute; top: 0; right: 0; width: 0; height: 0;
+        border-style: solid; border-width: 0 0 22px 22px;
+        border-color: transparent transparent ${PALETTE.sage} transparent;
+        opacity: 0; transform: translate(6px, -6px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+      }
+      .rr-card-clickable:hover::after { opacity: 1; transform: translate(0, 0); }
       .rr-pill { font-size: 11px; color: ${PALETTE.ink}; background: ${PALETTE.sageWash}; border-radius: 999px; padding: 3px 11px; }
       .rr-chip {
         font-family: 'Karla', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
         border: 1.5px solid ${PALETTE.sage}; border-radius: 999px; padding: 7px 16px; cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
+      .rr-chip:hover { transform: translateY(-1px) scale(1.03); }
+      .rr-chip:active { transform: scale(0.95); }
       .rr-colophon {
         text-align: center;
         padding: 34px 20px 50px;
@@ -1533,7 +1553,9 @@ function GlobalStyle() {
         cursor: pointer; background: ${PALETTE.sageWash}; color: ${PALETTE.ink};
         transition: transform 0.12s ease;
       }
+      .rr-btn { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .rr-btn:hover { transform: translateY(-1px); }
+      .rr-btn:active { transform: scale(0.97); }
       .rr-btn-filled { background: ${PALETTE.terracottaDeep}; color: ${PALETTE.white}; }
       .rr-btn-filled:hover { background: #7a3e20; }
       .rr-link {
@@ -1541,12 +1563,16 @@ function GlobalStyle() {
         background: none; border: none; padding: 0; cursor: pointer;
         font-family: 'Karla', sans-serif; font-weight: 600; font-size: 13px; color: ${PALETTE.ink};
         text-decoration: underline; text-underline-offset: 3px; text-decoration-color: ${PALETTE.terracotta};
+        transition: text-underline-offset 0.15s ease;
       }
+      .rr-link:hover { text-underline-offset: 5px; }
       .rr-icon-btn {
         width: 26px; height: 26px; border: none; background: transparent; border-radius: 50%;
         color: ${PALETTE.inkSoft}; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
-      .rr-icon-btn:hover { background: ${PALETTE.sageWash}; color: ${PALETTE.ink}; }
+      .rr-icon-btn:hover { background: ${PALETTE.sageWash}; color: ${PALETTE.ink}; transform: scale(1.14); }
+      .rr-icon-btn:active { transform: scale(0.88); }
       .wash { position: absolute; top: -160px; right: -140px; width: 380px; height: 380px; border-radius: 50%; background: ${PALETTE.sage}; opacity: 0.14; filter: blur(70px); pointer-events: none; z-index: 0; }
       button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
         outline: 2px solid ${PALETTE.terracotta}; outline-offset: 2px;
