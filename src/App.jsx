@@ -1467,7 +1467,6 @@ function PulseDot({ size = 14 }) {
   return <span className="rr-pulse-dot" style={{ width: size * 0.4, height: size * 0.4 }} aria-hidden="true" />;
 }
 
-</parameter>
 function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", actionLabel = "deshacer" }) {
   return (
     <div className="rr-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "14px 18px", marginTop: "14px", position: "sticky", bottom: "16px", background: PALETTE.white }}>
