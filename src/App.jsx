@@ -1556,10 +1556,10 @@ function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", acti
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Fraunces:opsz,wght,SOFT@9..144,900,100&family=DM+Sans:wght@400;500;700&display=swap');
       * { box-sizing: border-box; }
       .rr-title { font-family: 'DM Sans', sans-serif; font-weight: 400; color: ${PALETTE.ink}; margin: 0; }
-      .rr-brand { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; color: ${PALETTE.ink}; margin: 0; }
+      .rr-brand { font-family: 'Fraunces', serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
       .rr-stat-inline { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
       .rr-stat-big { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
@@ -1723,13 +1723,13 @@ function GlobalStyle() {
       .rr-header {
         padding: max(50px, env(safe-area-inset-top)) 40px 22px;
       }
-      .rr-h1 { font-size: 32px; }
+      .rr-h1 { font-size: 38px; }
       .rr-main {
         padding: 8px 40px calc(90px + env(safe-area-inset-bottom));
       }
       @media (max-width: 600px) {
         .rr-header { padding: max(32px, env(safe-area-inset-top)) 20px 18px; }
-        .rr-h1 { font-size: 26px; }
+        .rr-h1 { font-size: 28px; }
         .rr-main { padding: 8px 16px calc(70px + env(safe-area-inset-bottom)); }
         /* Zonas táctiles de al menos 44px, el mínimo recomendado en iOS */
         .rr-icon-btn { width: 40px; height: 40px; }
