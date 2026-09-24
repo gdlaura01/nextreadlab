@@ -778,7 +778,7 @@ export default function ReadingRoom() {
   const allDismissed = allRecs.length > 0 && dismissed.size === allRecs.length;
 
   return (
-    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: "'Roboto Slab', serif", color: PALETTE.ink, position: "relative" }}>
+    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: PALETTE.ink, position: "relative" }}>
       <GlobalStyle />
       <div className="wash" />
       <div aria-live="polite" className="sr-only">{announcement}</div>
@@ -1556,9 +1556,9 @@ function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", acti
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Roboto+Slab:wght@200;300;400&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=DM+Sans:wght@400;500;700&display=swap');
       * { box-sizing: border-box; }
-      .rr-title { font-family: 'Roboto Slab', serif; font-weight: 200; color: ${PALETTE.ink}; margin: 0; }
+      .rr-title { font-family: 'DM Sans', sans-serif; font-weight: 400; color: ${PALETTE.ink}; margin: 0; }
       .rr-brand { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
       .rr-stat-inline { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
@@ -1581,7 +1581,7 @@ function GlobalStyle() {
       .rr-card-clickable:hover .rr-cover { outline-color: ${PALETTE.terracotta}; }
       .rr-pill { font-size: 11px; color: ${PALETTE.ink}; background: ${PALETTE.sageWash}; border-radius: 999px; padding: 3px 11px; }
       .rr-chip {
-        font-family: 'Roboto Slab', serif; font-size: 12px; font-weight: 200; color: ${PALETTE.ink};
+        font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
         border: 1.5px solid ${PALETTE.sage}; border-radius: 999px; padding: 7px 16px; cursor: pointer;
         transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
       }
@@ -1590,8 +1590,8 @@ function GlobalStyle() {
       .rr-colophon {
         text-align: center;
         padding: 34px 20px 50px;
-        font-family: 'Roboto Slab', serif;
-        font-weight: 200;
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 400;
         font-size: 11px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -1606,14 +1606,14 @@ function GlobalStyle() {
         vertical-align: middle;
       }      
       .rr-select {
-        font-family: 'Roboto Slab', serif; font-weight: 200; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
+        font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
         border-radius: 999px; padding: 5px 26px 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
         appearance: none; -webkit-appearance: none; -moz-appearance: none;
       }
       .rr-select-wrap { position: relative; display: inline-flex; align-items: center; }
       .rr-dropdown { position: relative; display: inline-flex; }
       .rr-select-btn {
-        font-family: 'Roboto Slab', serif; font-weight: 200; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
+        font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
         border-radius: 999px; padding: 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink};
         cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
       }
@@ -1625,13 +1625,13 @@ function GlobalStyle() {
       }
       .rr-dropdown-option {
         width: 100%; text-align: left; background: none; border: none; padding: 8px 12px; border-radius: 8px;
-        font-family: 'Roboto Slab', serif; font-weight: 200; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
+        font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
       }
       .rr-dropdown-option:hover { background: ${PALETTE.sageWash}; }
       .rr-select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: ${PALETTE.terracotta}; }
       .rr-btn {
         display: inline-flex; align-items: center; gap: 8px;
-        font-family: 'Roboto Slab', serif; font-weight: 200; font-size: 13px;
+        font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px;
         border: none; border-radius: 999px; padding: 12px 26px;
         cursor: pointer; background: ${PALETTE.sageWash}; color: ${PALETTE.ink};
         transition: transform 0.12s ease;
@@ -1644,7 +1644,7 @@ function GlobalStyle() {
       .rr-link {
         display: inline-flex; align-items: center; gap: 6px;
         background: none; border: none; padding: 0; cursor: pointer;
-        font-family: 'Roboto Slab', serif; font-weight: 200; font-size: 13px; color: ${PALETTE.ink};
+        font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px; color: ${PALETTE.ink};
         text-decoration: underline; text-underline-offset: 3px; text-decoration-color: ${PALETTE.terracotta};
         transition: text-underline-offset 0.15s ease;
       }
@@ -1694,7 +1694,7 @@ function GlobalStyle() {
       }      
       .rr-topbar-btn {
         display: inline-flex; align-items: center; gap: 6px;
-        font-family: 'Roboto Slab', serif; font-weight: 200; font-size: 12px; color: ${PALETTE.ink};
+        font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 12px; color: ${PALETTE.ink};
         background: none; border: none; padding: 8px 12px; cursor: pointer; border-radius: 999px;
         transition: background 0.15s ease;
       }
