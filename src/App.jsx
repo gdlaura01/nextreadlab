@@ -787,7 +787,6 @@ export default function ReadingRoom() {
         <BookMark size={72} />
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>a partir de tu Goodreads</div>
         <h1
-        <h1
           ref={!selectedBook ? headingRef : null}
           tabIndex={-1}
           className="rr-brand rr-h1"
