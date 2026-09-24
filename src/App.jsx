@@ -787,12 +787,13 @@ export default function ReadingRoom() {
         <BookMark size={72} />
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>a partir de tu Goodreads</div>
         <h1
+        <h1
           ref={!selectedBook ? headingRef : null}
           tabIndex={-1}
-          className="rr-title rr-h1"
+          className="rr-brand rr-h1"
           style={{ margin: 0, outline: "none" }}
         >
-          Next Read <em style={{ fontStyle: "italic", color: PALETTE.terracottaDeep }}>Lab</em>
+          Next Read <span style={{ color: PALETTE.terracottaDeep }}>Lab</span>
         </h1>
         <div className="rr-diamond" />
       </header>
@@ -1558,10 +1559,11 @@ function GlobalStyle() {
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Girassol&family=Roboto:wght@400;500;600;700&display=swap');
       * { box-sizing: border-box; }
-      .rr-title { font-family: 'Girassol', serif; font-weight: 500; color: ${PALETTE.ink}; margin: 0; }
+      .rr-title { font-family: 'Roboto', sans-serif; font-weight: 700; color: ${PALETTE.ink}; margin: 0; }
+      .rr-brand { font-family: 'Girassol', serif; font-weight: 400; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
-      .rr-stat-inline { font-family: 'Girassol', serif; font-style: italic; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
-      .rr-stat-big { font-family: 'Girassol', serif; font-style: italic; font-weight: 600; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
+      .rr-stat-inline { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
+      .rr-stat-big { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
       .rr-diamond {
         width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0;
         animation: rr-diamond-breathe 4s ease-in-out infinite;
