@@ -1556,10 +1556,10 @@ function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", acti
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Girassol&family=Roboto:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400;1,700&family=Abel&display=swap');
       * { box-sizing: border-box; }
-      .rr-title { font-family: 'Roboto', sans-serif; font-weight: 700; color: ${PALETTE.ink}; margin: 0; }
-      .rr-brand { font-family: 'Girassol', serif; font-weight: 400; color: ${PALETTE.ink}; margin: 0; }
+      .rr-stat-inline { font-family: 'Libre Baskerville', serif; font-style: italic; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
+      .rr-stat-big { font-family: 'Libre Baskerville', serif; font-style: italic; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
       .rr-stat-inline { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
       .rr-stat-big { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
