@@ -778,7 +778,7 @@ export default function ReadingRoom() {
   const allDismissed = allRecs.length > 0 && dismissed.size === allRecs.length;
 
   return (
-    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: "'Karla', sans-serif", color: PALETTE.ink, position: "relative" }}>
+    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: "'Roboto', sans-serif", color: PALETTE.ink, position: "relative" }}>
       <GlobalStyle />
       <div className="wash" />
       <div aria-live="polite" className="sr-only">{announcement}</div>
@@ -908,7 +908,7 @@ export default function ReadingRoom() {
         NEXT READ LAB
         <span className="rr-colophon-dot" aria-hidden="true"></span>
         hecha por{" "}
-        <a        
+        <a
           href="https://github.com/gdlaura01"
           target="_blank"
           rel="noreferrer"
@@ -1556,12 +1556,12 @@ function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", acti
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Karla:wght@400;500;600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Girassol&family=Roboto:wght@400;500;600;700&display=swap');
       * { box-sizing: border-box; }
-      .rr-title { font-family: 'Fraunces', serif; font-weight: 500; color: ${PALETTE.ink}; margin: 0; }
+      .rr-title { font-family: 'Girassol', serif; font-weight: 500; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
-      .rr-stat-inline { font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
-      .rr-stat-big { font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
+      .rr-stat-inline { font-family: 'Girassol', serif; font-style: italic; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
+      .rr-stat-big { font-family: 'Girassol', serif; font-style: italic; font-weight: 600; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
       .rr-diamond {
         width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0;
         animation: rr-diamond-breathe 4s ease-in-out infinite;
@@ -1580,7 +1580,7 @@ function GlobalStyle() {
       .rr-card-clickable:hover .rr-cover { outline-color: ${PALETTE.terracotta}; }
       .rr-pill { font-size: 11px; color: ${PALETTE.ink}; background: ${PALETTE.sageWash}; border-radius: 999px; padding: 3px 11px; }
       .rr-chip {
-        font-family: 'Karla', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
+        font-family: 'Roboto', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
         border: 1.5px solid ${PALETTE.sage}; border-radius: 999px; padding: 7px 16px; cursor: pointer;
         transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
       }
@@ -1589,7 +1589,7 @@ function GlobalStyle() {
       .rr-colophon {
         text-align: center;
         padding: 34px 20px 50px;
-        font-family: 'Karla', sans-serif;
+        font-family: 'Roboto', sans-serif;
         font-size: 11px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -1604,14 +1604,14 @@ function GlobalStyle() {
         vertical-align: middle;
       }      
       .rr-select {
-        font-family: 'Karla', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
+        font-family: 'Roboto', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
         border-radius: 999px; padding: 5px 26px 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
         appearance: none; -webkit-appearance: none; -moz-appearance: none;
       }
       .rr-select-wrap { position: relative; display: inline-flex; align-items: center; }
       .rr-dropdown { position: relative; display: inline-flex; }
       .rr-select-btn {
-        font-family: 'Karla', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
+        font-family: 'Roboto', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
         border-radius: 999px; padding: 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink};
         cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
       }
@@ -1623,13 +1623,13 @@ function GlobalStyle() {
       }
       .rr-dropdown-option {
         width: 100%; text-align: left; background: none; border: none; padding: 8px 12px; border-radius: 8px;
-        font-family: 'Karla', sans-serif; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
+        font-family: 'Roboto', sans-serif; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
       }
       .rr-dropdown-option:hover { background: ${PALETTE.sageWash}; }
       .rr-select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: ${PALETTE.terracotta}; }
       .rr-btn {
         display: inline-flex; align-items: center; gap: 8px;
-        font-family: 'Karla', sans-serif; font-weight: 600; font-size: 13px;
+        font-family: 'Roboto', sans-serif; font-weight: 600; font-size: 13px;
         border: none; border-radius: 999px; padding: 12px 26px;
         cursor: pointer; background: ${PALETTE.sageWash}; color: ${PALETTE.ink};
         transition: transform 0.12s ease;
@@ -1642,7 +1642,7 @@ function GlobalStyle() {
       .rr-link {
         display: inline-flex; align-items: center; gap: 6px;
         background: none; border: none; padding: 0; cursor: pointer;
-        font-family: 'Karla', sans-serif; font-weight: 600; font-size: 13px; color: ${PALETTE.ink};
+        font-family: 'Roboto', sans-serif; font-weight: 600; font-size: 13px; color: ${PALETTE.ink};
         text-decoration: underline; text-underline-offset: 3px; text-decoration-color: ${PALETTE.terracotta};
         transition: text-underline-offset 0.15s ease;
       }
@@ -1692,7 +1692,7 @@ function GlobalStyle() {
       }      
       .rr-topbar-btn {
         display: inline-flex; align-items: center; gap: 6px;
-        font-family: 'Karla', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
+        font-family: 'Roboto', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
         background: none; border: none; padding: 8px 12px; cursor: pointer; border-radius: 999px;
         transition: background 0.15s ease;
       }
