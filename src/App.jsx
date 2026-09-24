@@ -778,22 +778,7 @@ export default function ReadingRoom() {
       <div aria-live="polite" className="sr-only">{announcement}</div>
 
       <header className="rr-header" style={{ maxWidth: "720px", margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
-        <svg viewBox="24 35 192 123" width="72" height="46" style={{ display: "block", margin: "0 auto 10px" }} aria-hidden="true">
-          <g transform="rotate(-2 120 100)">
-            <line x1="120" y1="58" x2="120" y2="148" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" />
-            <path d="M 120 62 C 95 56, 55 58, 34 68 C 32 100, 32 118, 36 142 C 58 150, 96 150, 120 144 Z"
-                  fill="none" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M 120 62 C 145 56, 185 58, 206 68 C 208 100, 208 118, 204 142 C 182 150, 144 150, 120 144 Z"
-                  fill="none" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M 52 96 Q 76 78, 100 96" fill="none" stroke={PALETTE.terracottaDeep} strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M 46 108 Q 76 84, 106 108" fill="none" stroke={PALETTE.terracotta} strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M 40 120 Q 76 90, 112 120" fill="none" stroke={PALETTE.sage} strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M 188 96 Q 164 78, 140 96" fill="none" stroke={PALETTE.terracottaDeep} strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M 194 108 Q 164 84, 134 108" fill="none" stroke={PALETTE.terracotta} strokeWidth="4.5" strokeLinecap="round" />
-            <path d="M 200 120 Q 164 90, 128 120" fill="none" stroke={PALETTE.sage} strokeWidth="4.5" strokeLinecap="round" />
-            <circle cx="132" cy="46" r="4.5" fill={PALETTE.terracottaDeep} />
-          </g>
-        </svg>
+        <BookMark size={72} />
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>a partir de tu Goodreads</div>
         <h1          ref={!selectedBook ? headingRef : null}
           tabIndex={-1}
@@ -888,7 +873,7 @@ export default function ReadingRoom() {
                 )}
                 {allDismissed ? (
                   <div className="rr-card" style={{ padding: "26px", textAlign: "center" }}>
-                    <p style={{ fontSize: "14px", marginBottom: "14px" }}>Has descartado todas las recomendaciones.</p>
+                    <p style={{ fontSize: "14px", marginBottom: "14px" }}>Has vaciado la estantería entera. ¿Le damos otra vuelta?</p>
                     <button className="rr-btn" onClick={restoreAllDismissed}>volver a mostrarlas todas</button>
                   </div>
                 ) : (
@@ -1002,7 +987,7 @@ function PickPane({ onSelect, fileInputRef, syncStatus, onAccessSynced, onConnec
                 disabled={connecting || !userId}
                 style={{ display: "inline-flex", alignItems: "center", gap: "8px", opacity: connecting || !userId ? 0.6 : 1 }}
               >
-                {connecting ? <Loader2 size={14} strokeWidth={1.8} style={{ animation: "spin 0.8s linear infinite" }} /> : <RefreshCw size={14} strokeWidth={1.4} />}
+                {connecting ? <PulseDot /> : <RefreshCw size={14} strokeWidth={1.4} />}
                 {connecting ? "conectando…" : "conectar con Goodreads"}
               </button>
               {connectError && (
@@ -1069,7 +1054,7 @@ function ConfirmPane({ file, onConfirm, onCancel }) {
 function BuildingPane({ statusMsg }) {
   return (
     <div className="rr-card" style={{ padding: "60px 30px", textAlign: "center" }}>
-      <Loader2 size={26} style={{ animation: "spin 0.9s linear infinite", color: PALETTE.terracotta }} />
+      <BookMark size={64} animated />
       <p style={{ marginTop: "18px", fontSize: "14px", color: PALETTE.inkSoft }}>{statusMsg}</p>
     </div>
   );
@@ -1140,7 +1125,7 @@ function FilterBar({ topGenres, hasAuthorMatches, hasSaved, activeGenre, setActi
 function RecommendationsPanel({ recs, saved, onDismiss, onToggleSaved, onSelect }) {
   const [askingId, setAskingId] = useState(null);
   if (!recs.length) {
-    return <p style={{ fontSize: "14px", color: PALETTE.inkSoft }}>No queda ninguna recomendación con este filtro. Prueba con "todos".</p>;
+    return <p style={{ fontSize: "14px", color: PALETTE.inkSoft, textAlign: "center", padding: "20px 0" }}>Aquí no hay nada que encaje con este filtro — prueba con «todos» para ver el resto de tu estantería.</p>;
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -1403,7 +1388,7 @@ function TopBar({ dismissedCount, onHome, onReset, onShowTrash, onRefresh, refre
           <Trash2 size={13} strokeWidth={1.6} /> <span className="rr-topbar-label">descartados{dismissedCount > 0 ? ` (${dismissedCount})` : ""}</span>
         </button>
         <button className="rr-topbar-btn" onClick={onRefresh} disabled={refreshing} title="Actualizar resultados">
-          {refreshing ? <Loader2 size={13} strokeWidth={1.8} style={{ animation: "spin 0.8s linear infinite" }} /> : <RefreshCw size={13} strokeWidth={1.6} />}
+          {refreshing ? <PulseDot /> : <RefreshCw size={13} strokeWidth={1.6} />}
           <span className="rr-topbar-label">{refreshing ? "actualizando…" : "actualizar resultados"}</span>
         </button>
       </div>
@@ -1437,7 +1422,7 @@ function TrashView({ recs, onRestore, onRestoreAll, onBack }) {
         {recs.length > 0 && <button className="rr-link" onClick={onRestoreAll}>restaurar todos</button>}
       </div>
       {recs.length === 0 ? (
-        <p style={{ fontSize: "14px", color: PALETTE.inkSoft }}>No has descartado ninguna recomendación todavía.</p>
+        <p style={{ fontSize: "14px", color: PALETTE.inkSoft }}>Nada por aquí todavía — cuando descartes alguna recomendación, aparecerá en este cajón.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {recs.map((r) => (
@@ -1456,7 +1441,33 @@ function TrashView({ recs, onRestore, onRestoreAll, onBack }) {
     </div>
   );
 }
+function BookMark({ size = 72, animated = false }) {
+  const h = Math.round(size * (123 / 192));
+  return (
+    <svg viewBox="24 35 192 123" width={size} height={h} style={{ display: "block", margin: "0 auto 10px" }} aria-hidden="true">
+      <g transform="rotate(-2 120 100)">
+        <line x1="120" y1="58" x2="120" y2="148" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" />
+        <path d="M 120 62 C 95 56, 55 58, 34 68 C 32 100, 32 118, 36 142 C 58 150, 96 150, 120 144 Z"
+              fill="none" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M 120 62 C 145 56, 185 58, 206 68 C 208 100, 208 118, 204 142 C 182 150, 144 150, 120 144 Z"
+              fill="none" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <path className={animated ? "rr-arc rr-arc-1" : undefined} d="M 52 96 Q 76 78, 100 96" fill="none" stroke={PALETTE.terracottaDeep} strokeWidth="4.5" strokeLinecap="round" />
+        <path className={animated ? "rr-arc rr-arc-2" : undefined} d="M 46 108 Q 76 84, 106 108" fill="none" stroke={PALETTE.terracotta} strokeWidth="4.5" strokeLinecap="round" />
+        <path className={animated ? "rr-arc rr-arc-3" : undefined} d="M 40 120 Q 76 90, 112 120" fill="none" stroke={PALETTE.sage} strokeWidth="4.5" strokeLinecap="round" />
+        <path className={animated ? "rr-arc rr-arc-1" : undefined} d="M 188 96 Q 164 78, 140 96" fill="none" stroke={PALETTE.terracottaDeep} strokeWidth="4.5" strokeLinecap="round" />
+        <path className={animated ? "rr-arc rr-arc-2" : undefined} d="M 194 108 Q 164 84, 134 108" fill="none" stroke={PALETTE.terracotta} strokeWidth="4.5" strokeLinecap="round" />
+        <path className={animated ? "rr-arc rr-arc-3" : undefined} d="M 200 120 Q 164 90, 128 120" fill="none" stroke={PALETTE.sage} strokeWidth="4.5" strokeLinecap="round" />
+        <circle cx="132" cy="46" r="4.5" fill={PALETTE.terracottaDeep} />
+      </g>
+    </svg>
+  );
+}
 
+function PulseDot({ size = 14 }) {
+  return <span className="rr-pulse-dot" style={{ width: size * 0.4, height: size * 0.4 }} aria-hidden="true" />;
+}
+
+</parameter>
 function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", actionLabel = "deshacer" }) {
   return (
     <div className="rr-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "14px 18px", marginTop: "14px", position: "sticky", bottom: "16px", background: PALETTE.white }}>
@@ -1551,6 +1562,21 @@ function GlobalStyle() {
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
       }
       @keyframes spin { to { transform: rotate(360deg); } }
+      .rr-arc { animation: rr-pulse-arc 1.6s ease-in-out infinite; }
+      .rr-arc-2 { animation-delay: 0.18s; }
+      .rr-arc-3 { animation-delay: 0.36s; }
+      @keyframes rr-pulse-arc {
+        0%, 100% { opacity: 0.22; }
+        50% { opacity: 1; }
+      }
+      .rr-pulse-dot {
+        display: inline-block; background: currentColor; transform: rotate(45deg);
+        animation: rr-pulse-dot 1s ease-in-out infinite;
+      }
+      @keyframes rr-pulse-dot {
+        0%, 100% { transform: rotate(45deg) scale(0.7); opacity: 0.5; }
+        50% { transform: rotate(45deg) scale(1.15); opacity: 1; }
+      }      
       .rr-topbar-btn {
         display: inline-flex; align-items: center; gap: 6px;
         font-family: 'Karla', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
