@@ -911,6 +911,21 @@ export default function ReadingRoom() {
         )}
         </div>
       </main>
+      <footer className="rr-colophon">
+        NEXT READ LAB
+        <span className="rr-colophon-dot" aria-hidden="true"></span>
+        hecha por{" "}
+        
+          href="https://github.com/gdlaura01"
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: "2px" }}
+        >
+          github.com/gdlaura01
+        </a>
+        <span className="rr-colophon-dot" aria-hidden="true"></span>
+        {new Date().getFullYear()}
+      </footer>
     </div>
   );
 }
@@ -1473,6 +1488,23 @@ function GlobalStyle() {
         border: 1.5px solid ${PALETTE.sage}; border-radius: 999px; padding: 7px 16px; cursor: pointer;
         transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
       }
+      .rr-colophon {
+        text-align: center;
+        padding: 34px 20px 50px;
+        font-family: 'Karla', sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: ${PALETTE.ink};
+      }
+      .rr-colophon-dot {
+        display: inline-block;
+        width: 5px; height: 5px;
+        background: ${PALETTE.sage};
+        transform: rotate(45deg);
+        margin: 0 10px;
+        vertical-align: middle;
+      }      
       .rr-select {
         font-family: 'Karla', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
         border-radius: 999px; padding: 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
@@ -1502,6 +1534,18 @@ function GlobalStyle() {
       button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
         outline: 2px solid ${PALETTE.terracotta}; outline-offset: 2px;
       }
+      ::selection {
+        background: ${PALETTE.terracotta};
+        color: ${PALETTE.bg};
+      }
+      html {
+        scrollbar-width: thin;
+        scrollbar-color: ${PALETTE.terracotta} ${PALETTE.sageWash};
+      }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-track { background: ${PALETTE.sageWash}; }
+      ::-webkit-scrollbar-thumb { background: ${PALETTE.terracotta}; border-radius: 999px; }
+      ::-webkit-scrollbar-thumb:hover { background: ${PALETTE.terracottaDeep}; }
       .visually-hidden, .sr-only {
         position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
