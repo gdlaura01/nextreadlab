@@ -915,7 +915,7 @@ export default function ReadingRoom() {
         NEXT READ LAB
         <span className="rr-colophon-dot" aria-hidden="true"></span>
         hecha por{" "}
-        
+        <a        
           href="https://github.com/gdlaura01"
           target="_blank"
           rel="noreferrer"
