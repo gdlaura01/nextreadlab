@@ -1120,10 +1120,13 @@ function FilterBar({ topGenres, hasAuthorMatches, hasSaved, activeGenre, setActi
       </div>
       <label style={{ fontSize: "12px", color: PALETTE.inkSoft, display: "flex", alignItems: "center", gap: "8px" }}>
         ordenar
-        <select className="rr-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="relevancia">relevancia</option>
-          <option value="valoracion">valoración</option>
-        </select>
+        <span className="rr-select-wrap">
+          <select className="rr-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            <option value="relevancia">relevancia</option>
+            <option value="valoracion">valoración</option>
+          </select>
+          <ChevronDown size={12} strokeWidth={1.8} className="rr-select-arrow" aria-hidden="true" />
+        </span>
       </label>
     </div>
   );
@@ -1149,7 +1152,7 @@ function RecommendationsPanel({ recs, saved, onDismiss, onToggleSaved, onSelect 
             onKeyDown={(e) => { if (!isAsking && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(r); } }}
             style={{ padding: "18px 20px", display: "flex", gap: "16px", background: PALETTE.white, cursor: isAsking ? "default" : "pointer" }}
           >
-            <div style={{ width: "60px", height: "86px", flexShrink: 0, borderRadius: "10px", background: PALETTE.sageWash, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <div className="rr-cover" style={{ width: "60px", height: "86px", flexShrink: 0, borderRadius: "10px", background: PALETTE.sageWash, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
               {r.thumbnail ? (
                 <img src={r.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
@@ -1507,24 +1510,18 @@ function GlobalStyle() {
         .rr-diamond { animation: none; }
       }
       .rr-card { background: ${PALETTE.white}; border: 1px solid #EDE6D0; border-radius: 18px; box-shadow: 0 4px 16px rgba(78,34,15,0.06); }
-      .rr-card-clickable { position: relative; overflow: hidden; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+      .rr-card-clickable { transition: transform 0.12s ease, box-shadow 0.12s ease; }
       .rr-card-clickable:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(78,34,15,0.09); }
-      .rr-card-clickable::after {
-        content: ""; position: absolute; top: 0; right: 0; width: 0; height: 0;
-        border-style: solid; border-width: 0 0 22px 22px;
-        border-color: transparent transparent ${PALETTE.sage} transparent;
-        opacity: 0; transform: translate(6px, -6px);
-        transition: opacity 0.18s ease, transform 0.18s ease;
-      }
-      .rr-card-clickable:hover::after { opacity: 1; transform: translate(0, 0); }
+      .rr-cover { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color 0.15s ease; }
+      .rr-card-clickable:hover .rr-cover { outline-color: ${PALETTE.terracotta}; }
       .rr-pill { font-size: 11px; color: ${PALETTE.ink}; background: ${PALETTE.sageWash}; border-radius: 999px; padding: 3px 11px; }
       .rr-chip {
         font-family: 'Karla', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
         border: 1.5px solid ${PALETTE.sage}; border-radius: 999px; padding: 7px 16px; cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
       }
-      .rr-chip:hover { transform: translateY(-1px) scale(1.03); }
-      .rr-chip:active { transform: scale(0.95); }
+      .rr-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(78,34,15,0.12); }
+      .rr-chip:active { transform: translateY(0); box-shadow: inset 0 1px 3px rgba(78,34,15,0.18); }
       .rr-colophon {
         text-align: center;
         padding: 34px 20px 50px;
@@ -1544,8 +1541,11 @@ function GlobalStyle() {
       }      
       .rr-select {
         font-family: 'Karla', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
-        border-radius: 999px; padding: 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
+        border-radius: 999px; padding: 5px 26px 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
+        appearance: none; -webkit-appearance: none; -moz-appearance: none;
       }
+      .rr-select-wrap { position: relative; display: inline-flex; align-items: center; }
+      .rr-select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: ${PALETTE.terracotta}; }
       .rr-btn {
         display: inline-flex; align-items: center; gap: 8px;
         font-family: 'Karla', sans-serif; font-weight: 600; font-size: 13px;
