@@ -630,7 +630,6 @@ export default function ReadingRoom() {
   const refreshResults = useCallback(async () => {
     if (!libraryBooks || !profile) return;
     setRefreshing(true);
-    setPreviousRecs(allRecs);
     setAnnouncement("Actualizando recomendaciones…");
     try {
       const books = libraryBooks
@@ -667,7 +666,9 @@ export default function ReadingRoom() {
       });
       scored.sort((a, b) => b.score - a.score);
       const nextRecs = scored.slice(0, 14);
+      setPreviousRecs(allRecs);
       setAllRecs(nextRecs);
+      showRefreshToast();
       if (identityKey) {
         saveJSON(scopedKey(STORAGE_KEY, identityKey), { profile, allRecs: nextRecs });
       }
@@ -691,6 +692,7 @@ export default function ReadingRoom() {
 
   const dismissRec = useCallback((id, reason, matchedGenres) => {
     setDismissed((prev) => new Set(prev).add(id));
+    showDismissToast();
     if (reason === "genre" && matchedGenres?.length) {
       setAvoidedGenres((prev) => {
         const next = new Set(prev);
@@ -731,26 +733,30 @@ export default function ReadingRoom() {
   const [dismissToastVisible, setDismissToastVisible] = useState(false);
   const [refreshToastVisible, setRefreshToastVisible] = useState(false);
 
-  useEffect(() => {
-    if (!lastDismissedId) {
-      setDismissToastVisible(false);
-      return;
-    }
+  const dismissToastTimer = useRef(null);
+  const refreshToastTimer = useRef(null);
+
+  const showDismissToast = useCallback(() => {
     setDismissToastVisible(true);
-    const t = setTimeout(() => setDismissToastVisible(false), 10000);
-    return () => clearTimeout(t);
-  }, [lastDismissedId]);
+    if (dismissToastTimer.current) clearTimeout(dismissToastTimer.current);
+    dismissToastTimer.current = setTimeout(() => setDismissToastVisible(false), 10000);
+  }, []);
 
-  useEffect(() => {
-    if (!previousRecs) {
-      setRefreshToastVisible(false);
-      return;
-    }
+  const closeDismissToast = useCallback(() => {
+    if (dismissToastTimer.current) clearTimeout(dismissToastTimer.current);
+    setDismissToastVisible(false);
+  }, []);
+
+  const showRefreshToast = useCallback(() => {
     setRefreshToastVisible(true);
-    const t = setTimeout(() => setRefreshToastVisible(false), 10000);
-    return () => clearTimeout(t);
-  }, [previousRecs]);
+    if (refreshToastTimer.current) clearTimeout(refreshToastTimer.current);
+    refreshToastTimer.current = setTimeout(() => setRefreshToastVisible(false), 10000);
+  }, []);
 
+  const closeRefreshToast = useCallback(() => {
+    if (refreshToastTimer.current) clearTimeout(refreshToastTimer.current);
+    setRefreshToastVisible(false);
+  }, []);
   const visibleRecs = useMemo(() => {
     let list = allRecs.filter((r) => !dismissed.has(r.id));
     if (activeGenre === "guardados") list = list.filter((r) => saved.has(r.id));
@@ -886,11 +892,12 @@ export default function ReadingRoom() {
                   />
                 )}
                 {dismissToastVisible && lastDismissedId && !allDismissed && (
-                  <UndoBar onUndo={() => undoDismiss(lastDismissedId)} onClose={() => setDismissToastVisible(false)} />
+                  <UndoBar onUndo={() => undoDismiss(lastDismissedId)} onClose={closeDismissToast} />
                 )}
                 {refreshToastVisible && previousRecs && (
-                  <UndoBar message="Recomendaciones actualizadas." actionLabel="deshacer actualización" onUndo={undoRefresh} onClose={() => setRefreshToastVisible(false)} />
-                )}              </>
+                  <UndoBar message="Recomendaciones actualizadas." actionLabel="deshacer actualización" onUndo={undoRefresh} onClose={closeRefreshToast} />
+                )}
+              </>
             )}
           </>
         )}
