@@ -786,12 +786,13 @@ export default function ReadingRoom() {
       <header className="rr-header" style={{ maxWidth: "720px", margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
         <BookMark size={72} />
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>a partir de tu Goodreads</div>
-        <h1          ref={!selectedBook ? headingRef : null}
+        <h1
+          ref={!selectedBook ? headingRef : null}
           tabIndex={-1}
           className="rr-title rr-h1"
           style={{ margin: 0, outline: "none" }}
         >
-          Next Read Lab
+          Next Read <em style={{ fontStyle: "italic", color: PALETTE.terracottaDeep }}>Lab</em>
         </h1>
         <div className="rr-diamond" />
       </header>
@@ -1072,7 +1073,8 @@ function ProfilePanel({ profile, collapsed, onToggleCollapsed }) {
     <section style={{ marginBottom: "32px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: collapsed ? 0 : "16px" }}>
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft }}>
-          {profile.fileName ? `${profile.fileName} · ` : ""}{profile.totalRead} libros leídos
+          {profile.fileName ? `${profile.fileName} · ` : ""}
+          <span className="rr-stat-inline">{profile.totalRead}</span> libros leídos
         </div>
         <button className="rr-link" onClick={onToggleCollapsed} aria-expanded={!collapsed} style={{ fontSize: "12px" }}>
           {collapsed ? "mostrar ficha de lectora" : "ocultar"}
@@ -1091,7 +1093,14 @@ function ProfilePanel({ profile, collapsed, onToggleCollapsed }) {
           </div>
           <div className="rr-card" style={{ padding: "18px 20px", background: "#F4EFDE" }}>
             <div className="rr-label">extensión media</div>
-            <div style={{ fontSize: "14px", lineHeight: 1.5, marginTop: "8px" }}>{profile.avgPages ? `${profile.avgPages} páginas` : "sin datos"}</div>
+            {profile.avgPages ? (
+              <div style={{ marginTop: "6px", display: "flex", alignItems: "baseline", gap: "6px" }}>
+                <span className="rr-stat-big">{profile.avgPages}</span>
+                <span style={{ fontSize: "12px", color: PALETTE.inkSoft }}>páginas</span>
+              </div>
+            ) : (
+              <div style={{ fontSize: "14px", lineHeight: 1.5, marginTop: "8px" }}>sin datos</div>
+            )}
           </div>
         </div>
       )}
@@ -1551,6 +1560,8 @@ function GlobalStyle() {
       * { box-sizing: border-box; }
       .rr-title { font-family: 'Fraunces', serif; font-weight: 500; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
+      .rr-stat-inline { font-family: 'Fraunces', serif; font-style: italic; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
+      .rr-stat-big { font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
       .rr-diamond {
         width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0;
         animation: rr-diamond-breathe 4s ease-in-out infinite;
