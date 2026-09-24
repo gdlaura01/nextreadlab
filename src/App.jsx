@@ -1185,7 +1185,6 @@ function SortDropdown({ value, onChange, options }) {
   );
 }
 
-</parameter_ignore_this_line>
 function RecommendationsPanel({ recs, saved, onDismiss, onToggleSaved, onSelect }) {
   const [askingId, setAskingId] = useState(null);
   if (!recs.length) {
