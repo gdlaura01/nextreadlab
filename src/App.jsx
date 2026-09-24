@@ -1118,20 +1118,74 @@ function FilterBar({ topGenres, hasAuthorMatches, hasSaved, activeGenre, setActi
           );
         })}
       </div>
-      <label style={{ fontSize: "12px", color: PALETTE.inkSoft, display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ fontSize: "12px", color: PALETTE.inkSoft, display: "flex", alignItems: "center", gap: "8px" }}>
         ordenar
-        <span className="rr-select-wrap">
-          <select className="rr-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            <option value="relevancia">relevancia</option>
-            <option value="valoracion">valoración</option>
-          </select>
-          <ChevronDown size={12} strokeWidth={1.8} className="rr-select-arrow" aria-hidden="true" />
-        </span>
-      </label>
+        <SortDropdown
+          value={sortBy}
+          onChange={setSortBy}
+          options={[
+            { value: "relevancia", label: "relevancia" },
+            { value: "valoracion", label: "valoración" },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+function SortDropdown({ value, onChange, options }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    function handleKey(e) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, []);
+
+  const current = options.find((o) => o.value === value);
+
+  return (
+    <div className="rr-dropdown" ref={ref}>
+      <button
+        type="button"
+        className="rr-select-btn"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        {current?.label}
+        <ChevronDown size={12} strokeWidth={1.8} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+      </button>
+      {open && (
+        <ul className="rr-dropdown-list" role="listbox">
+          {options.map((o) => (
+            <li key={o.value} role="option" aria-selected={o.value === value}>
+              <button
+                type="button"
+                className="rr-dropdown-option"
+                onClick={() => { onChange(o.value); setOpen(false); }}
+                style={o.value === value ? { color: PALETTE.terracottaDeep, fontWeight: 700 } : undefined}
+              >
+                {o.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
+</parameter_ignore_this_line>
 function RecommendationsPanel({ recs, saved, onDismiss, onToggleSaved, onSelect }) {
   const [askingId, setAskingId] = useState(null);
   if (!recs.length) {
@@ -1545,6 +1599,23 @@ function GlobalStyle() {
         appearance: none; -webkit-appearance: none; -moz-appearance: none;
       }
       .rr-select-wrap { position: relative; display: inline-flex; align-items: center; }
+      .rr-dropdown { position: relative; display: inline-flex; }
+      .rr-select-btn {
+        font-family: 'Karla', sans-serif; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
+        border-radius: 999px; padding: 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink};
+        cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+      }
+      .rr-select-btn:hover { outline: 2px solid ${PALETTE.terracotta}; outline-offset: 2px; }
+      .rr-dropdown-list {
+        position: absolute; top: calc(100% + 6px); right: 0; min-width: 150px; z-index: 10;
+        background: ${PALETTE.white}; border: 1px solid #EDE6D0; border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(78,34,15,0.14); padding: 6px; margin: 0; list-style: none;
+      }
+      .rr-dropdown-option {
+        width: 100%; text-align: left; background: none; border: none; padding: 8px 12px; border-radius: 8px;
+        font-family: 'Karla', sans-serif; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
+      }
+      .rr-dropdown-option:hover { background: ${PALETTE.sageWash}; }
       .rr-select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: ${PALETTE.terracotta}; }
       .rr-btn {
         display: inline-flex; align-items: center; gap: 8px;
