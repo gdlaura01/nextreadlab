@@ -778,9 +778,24 @@ export default function ReadingRoom() {
       <div aria-live="polite" className="sr-only">{announcement}</div>
 
       <header className="rr-header" style={{ maxWidth: "720px", margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
+        <svg viewBox="24 35 192 123" width="72" height="46" style={{ display: "block", margin: "0 auto 10px" }} aria-hidden="true">
+          <g transform="rotate(-2 120 100)">
+            <line x1="120" y1="58" x2="120" y2="148" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" />
+            <path d="M 120 62 C 95 56, 55 58, 34 68 C 32 100, 32 118, 36 142 C 58 150, 96 150, 120 144 Z"
+                  fill="none" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M 120 62 C 145 56, 185 58, 206 68 C 208 100, 208 118, 204 142 C 182 150, 144 150, 120 144 Z"
+                  fill="none" stroke={PALETTE.ink} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M 52 96 Q 76 78, 100 96" fill="none" stroke={PALETTE.terracottaDeep} strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M 46 108 Q 76 84, 106 108" fill="none" stroke={PALETTE.terracotta} strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M 40 120 Q 76 90, 112 120" fill="none" stroke={PALETTE.sage} strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M 188 96 Q 164 78, 140 96" fill="none" stroke={PALETTE.terracottaDeep} strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M 194 108 Q 164 84, 134 108" fill="none" stroke={PALETTE.terracotta} strokeWidth="4.5" strokeLinecap="round" />
+            <path d="M 200 120 Q 164 90, 128 120" fill="none" stroke={PALETTE.sage} strokeWidth="4.5" strokeLinecap="round" />
+            <circle cx="132" cy="46" r="4.5" fill={PALETTE.terracottaDeep} />
+          </g>
+        </svg>
         <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>a partir de tu Goodreads</div>
-        <h1
-          ref={!selectedBook ? headingRef : null}
+        <h1          ref={!selectedBook ? headingRef : null}
           tabIndex={-1}
           className="rr-title rr-h1"
           style={{ margin: 0, outline: "none" }}
