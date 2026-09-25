@@ -1,9 +1,16 @@
 {
-  "png": {
-    "apple-touch-icon.png": 180,
-    "icon-192.png": 192,
-    "icon-512.png": 512
+  "shapes": {
+    "round": "Círculo del color de fondo con el logo; transparente fuera del círculo.",
+    "full": "Cuadrado opaco del color de fondo con el logo al mismo tamaño que el redondo. Para iOS, que recorta su propio cuadrado redondeado y rellena de negro lo transparente.",
+    "maskable": "Cuadrado opaco del color de fondo con el logo más pequeño, dentro de la zona segura (círculo central del 80%). Para Android, que recorta con la forma de cada lanzador."
   },
+  "png": [
+    { "file": "apple-touch-icon.png", "size": 180, "shape": "full" },
+    { "file": "icon-192.png", "size": 192, "shape": "round" },
+    { "file": "icon-512.png", "size": 512, "shape": "round" },
+    { "file": "icon-maskable-192.png", "size": 192, "shape": "maskable" },
+    { "file": "icon-maskable-512.png", "size": 512, "shape": "maskable" }
+  ],
   "ico": {
     "favicon.ico": [16, 32, 48],
     "app-icon.ico": [16, 32, 48, 64, 128, 256]
