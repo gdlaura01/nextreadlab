@@ -179,6 +179,30 @@ npm run build
 
 Esto genera una carpeta `dist/` con los archivos estáticos.
 
+## Regenerar los iconos
+
+Los iconos de `public/` (`favicon.ico`, `app-icon.ico`, `apple-touch-icon.png`,
+`icon-192.png` e `icon-512.png`) son el logo del libro dentro de un círculo del
+color de fondo de la marca, con las esquinas transparentes. Si cambias el logo
+(el componente `BookMark` de `src/App.jsx`) o los colores de `PALETTE`,
+vuelve a generarlos con:
+
+```
+npm run icons
+```
+
+El script lee el logo directamente de `src/App.jsx`, lo dibuja con tu Chrome o
+Edge y termina los archivos con Python. Necesitas:
+
+- **Chrome o Edge** instalados. Si usas otro Chromium, indica su ruta con la
+  variable `CHROMIUM_PATH`.
+- **Python 3 con Pillow**: `pip install pillow`.
+
+Al terminar, comprueba cada archivo (y cada tamaño de los `.ico`): tiene que
+estar en RGBA, con las cuatro esquinas transparentes y el centro opaco. Si
+alguno no cumple, el script termina con error. Los tamaños de cada icono están
+en `scripts/icons/icons.json`.
+
 ## Publicar en GitHub Pages (enlace en vivo)
 
 El repositorio incluye un flujo de GitHub Actions (`.github/workflows/deploy.yml`)

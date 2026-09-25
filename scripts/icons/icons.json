@@ -1,0 +1,11 @@
+{
+  "png": {
+    "apple-touch-icon.png": 180,
+    "icon-192.png": 192,
+    "icon-512.png": 512
+  },
+  "ico": {
+    "favicon.ico": [16, 32, 48],
+    "app-icon.ico": [16, 32, 48, 64, 128, 256]
+  }
+}
