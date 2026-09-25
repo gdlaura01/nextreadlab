@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Papa from "papaparse";
 import {
   BookOpen, Upload, X, ChevronDown, Check, RotateCcw,
-  FileText, Bookmark, BookmarkCheck, ExternalLink, Trash2, RefreshCw,
+  Bookmark, BookmarkCheck, ExternalLink, Trash2, RefreshCw,
 } from "lucide-react";
 
 // Síntesis de tus estilos favoritos: acuarela + escandinavo + cottagecore +
@@ -1029,28 +1029,85 @@ export default function ReadingRoom() {
   );
 }
 
+// Un primer vistazo al CSV antes de analizarlo, con los mismos criterios que
+// buildRecommendations, para confirmar que es el archivo correcto y avisar
+// antes de esperar si no sirve.
+function summarizeLibrary(rows) {
+  const books = rows.filter((r) => (r["Title"] || "").trim());
+  const read = books.filter((r) => (r["Exclusive Shelf"] || "").trim() === "read");
+  const rating = (r) => parseFloat(r["My Rating"] || "0");
+  return {
+    total: books.length,
+    read: read.length,
+    loved: read.filter((r) => rating(r) >= 4).length,
+    // Goodreads exporta primero lo último que añadiste; quitamos la serie entre paréntesis del final
+    fiveStars: read.filter((r) => rating(r) === 5).slice(0, 3).map((r) => r["Title"].trim().replace(/\s*\([^)]*\)$/, "")),
+  };
+}
+
 function ConfirmPane({ file, onConfirm, onCancel }) {
-  const sizeKb = Math.round(file.size / 1024);
+  const [summary, setSummary] = useState(null); // null mientras lee; false si no ha podido leerlo
+
+  useEffect(() => {
+    let alive = true;
+    setSummary(null);
+    parseGoodreadsCsv(file)
+      .then((rows) => { if (alive) setSummary(summarizeLibrary(rows)); })
+      .catch(() => { if (alive) setSummary(false); });
+    return () => { alive = false; };
+  }, [file]);
+
+  const unusable = summary === false || summary?.total === 0 || summary?.read === 0;
+
   return (
-    <div className="rr-card" style={{ padding: "30px 32px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
-        <div style={{ width: "42px", height: "42px", flexShrink: 0, borderRadius: "50%", background: PALETTE.sageWash, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <FileText size={19} color={PALETTE.ink} strokeWidth={1.3} />
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "14px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-          <div style={{ fontSize: "12px", color: PALETTE.inkSoft }}>{sizeKb} KB</div>
+    <div className="rr-pick">
+      <div className="rr-confirm" aria-live="polite">
+        {summary === null ? (
+          <p className="rr-confirm-lead rr-soft">Echando un vistazo a tu archivo…</p>
+        ) : summary === false || summary.total === 0 ? (
+          <>
+            <p className="rr-confirm-lead">En este archivo no encuentro libros.</p>
+            <p className="rr-confirm-sub">
+              ¿Es la exportación de Goodreads? Suele llamarse goodreads_library_export.csv y la descargas desde My Books, en Import and export.
+            </p>
+          </>
+        ) : summary.read === 0 ? (
+          <>
+            <p className="rr-confirm-lead">Veo {summary.total === 1 ? "un libro" : `${summary.total} libros`}, pero ninguno marcado como leído.</p>
+            <p className="rr-confirm-sub">
+              Sin saber qué has leído no puedo adivinar qué te gusta. Marca en Goodreads los que ya hayas terminado y vuelve a exportar la biblioteca.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="rr-confirm-lead">
+              {summary.read === summary.total
+                ? `Tengo tu biblioteca: ${summary.read} ${summary.read === 1 ? "libro leído" : "libros leídos"}.`
+                : `Tengo tu biblioteca: ${summary.total} libros, ${summary.read} ya ${summary.read === 1 ? "leído" : "leídos"}.`}
+            </p>
+            {summary.fiveStars.length > 0 && (
+              <p className="rr-confirm-sub">
+                Entre tus cinco estrellas más recientes {summary.fiveStars.length === 1 ? "está" : "están"}{" "}
+                {joinEs(summary.fiveStars.map((title) => <cite key={title}>{title}</cite>))}.
+              </p>
+            )}
+            <p className="rr-confirm-sub">
+              {summary.loved >= 3
+                ? `Con los ${summary.loved} que valoraste con cuatro o cinco estrellas tengo de sobra para empezar.`
+                : "Has valorado pocos con cuatro o cinco estrellas, así que tiraré de todo lo que has leído. Las recomendaciones serán algo menos finas."}
+            </p>
+          </>
+        )}
+        <div className="rr-actions" style={{ justifyContent: "center" }}>
+          {!unusable && (
+            <button className="rr-btn rr-btn-filled" onClick={onConfirm} disabled={summary === null} style={{ opacity: summary === null ? 0.6 : 1 }}>
+              <Check size={15} strokeWidth={1.7} /> buscar mi próxima lectura
+            </button>
+          )}
+          <button className="rr-link" onClick={onCancel}>{unusable ? "elegir otro archivo" : "no es este archivo"}</button>
         </div>
       </div>
-      <p style={{ fontSize: "13px", color: PALETTE.inkSoft, marginBottom: "24px", lineHeight: 1.6 }}>
-        Voy a leer este archivo y generar recomendaciones a partir de tus valoraciones. Todo ocurre aquí mismo, en tu navegador.
-      </p>
-      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
-        <button className="rr-btn rr-btn-filled" onClick={onConfirm}>
-          <Check size={14} strokeWidth={1.6} /> analizar mi biblioteca
-        </button>
-        <button className="rr-link" onClick={onCancel}>elegir otro archivo</button>
-      </div>
+      <p className="rr-confirm-file">He leído {file.name} aquí mismo, sin que salga de tu navegador.</p>
     </div>
   );
 }
@@ -1396,7 +1453,9 @@ function RecommendationsPanel({ recs, profile, saved, onDismiss, onToggleSaved, 
             {askingId === book.id ? reasons(book) : (
               <>
                 <span className="rr-later-text">
-                  <button className="rr-book-title" onClick={(e) => { e.stopPropagation(); onSelect(book); }}>{book.title}</button>, de {book.authors[0] || "autor desconocido"}
+                  {/* Enlace y no botón: un botón no parte línea junto al texto que le sigue */}
+                  <a className="rr-book-title" href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(book); }}>{book.title}</a>, de {book.authors[0] || "autor desconocido"}
+                  <span className="rr-later-why">{reasonFor(book, profile)}</span>
                 </span>
                 <BookIconActions book={book} isSaved={saved.has(book.id)} onToggleSaved={onToggleSaved} onAskDiscard={() => setAskingId(book.id)} />
               </>
@@ -1774,6 +1833,12 @@ function GlobalStyle() {
       .rr-alt-row { display: flex; gap: 10px; }
       .rr-alt-row .rr-select { flex: 1; min-width: 0; padding: 10px 16px; }
       .rr-error { color: ${PALETTE.terracottaDeep} !important; margin-top: 10px !important; }
+      .rr-confirm { text-align: center; padding: 36px 30px 32px; border-radius: 28px; background: ${PALETTE.sageWash}; }
+      .rr-confirm-lead { font-size: 21px; font-weight: 700; line-height: 1.35; margin: 0 0 10px; }
+      .rr-confirm-sub { font-size: 15px; line-height: 1.6; color: ${PALETTE.inkSoft}; margin: 0 auto 8px; max-width: 30em; }
+      .rr-confirm-sub cite { font-style: normal; font-weight: 700; color: ${PALETTE.ink}; }
+      .rr-confirm .rr-actions { margin-top: 22px; }
+      .rr-confirm-file { font-size: 13px; color: ${PALETTE.inkSoft}; text-align: center; margin: 16px 0 0; overflow-wrap: anywhere; }
       .rr-building { text-align: center; padding-bottom: 20px; }
       .rr-steps { list-style: none; padding: 0; margin: 10px auto 0; display: inline-flex; flex-direction: column; gap: 12px; text-align: left; font-size: 16px; }
       .rr-steps li { display: flex; align-items: center; gap: 12px; }
@@ -1825,10 +1890,10 @@ function GlobalStyle() {
       .rr-next-why { font-size: 14px; color: ${PALETTE.inkSoft}; line-height: 1.5; margin: 6px 0 4px; }
       .rr-icon-actions { display: flex; gap: 2px; flex-shrink: 0; margin-left: -6px; }
       .rr-later { list-style: none; margin: 0; padding: 0; border-top: 1px solid #EDE6D0; }
-      .rr-later li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #EDE6D0; cursor: pointer; font-size: 16px; }
+      .rr-later li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #EDE6D0; cursor: pointer; font-size: 16px; }
       .rr-later .rr-icon-actions { margin-left: 0; }
       .rr-later-text { color: ${PALETTE.inkSoft}; min-width: 0; }
-      .rr-later .rr-book-title { display: inline; }
+      .rr-later-why { display: block; font-size: 14px; line-height: 1.45; margin-top: 2px; }
       .rr-ink { color: ${PALETTE.ink}; }
       .rr-empty { font-size: 15px; color: ${PALETTE.inkSoft}; padding: 24px 0; }
 
