@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Papa from "papaparse";
 import {
-  BookOpen, Upload, Loader2, Star, X, ChevronDown, Check, RotateCcw,
-  FileText, Bookmark, BookmarkCheck, ExternalLink, Home, Trash2, RefreshCw,
+  BookOpen, Upload, X, ChevronDown, Check, RotateCcw,
+  Bookmark, BookmarkCheck, ExternalLink, Trash2, RefreshCw,
 } from "lucide-react";
 
 // Síntesis de tus estilos favoritos: acuarela + escandinavo + cottagecore +
@@ -336,6 +336,119 @@ async function fetchSpanishEdition(title, author) {
   }
 }
 
+// Google Books devuelve las categorías en inglés. Las traducimos, y guardamos
+// también su artículo para que las frases concuerden ("tu gusto por la novela
+// histórica", "tu gusto por el humor").
+const GENRE_ES = {
+  "Fiction": ["ficción", "la"],
+  "Literary": ["ficción literaria", "la"],
+  "Literary Fiction": ["ficción literaria", "la"],
+  "Historical": ["novela histórica", "la"],
+  "Psychological": ["novela psicológica", "la"],
+  "Biography & Autobiography": ["memorias", "las"],
+  "History": ["ensayo histórico", "el"],
+  "Books & Reading": ["libros sobre libros", "los"],
+  "Humor": ["humor", "el"],
+  "Dystopian": ["distopía", "la"],
+  "Fantasy": ["fantasía", "la"],
+  "Science Fiction": ["ciencia ficción", "la"],
+  "Romance": ["novela romántica", "la"],
+  "Mystery": ["misterio", "el"],
+  "Thrillers": ["thriller", "el"],
+  "Crime": ["novela negra", "la"],
+  "Poetry": ["poesía", "la"],
+  "Philosophy": ["filosofía", "la"],
+  "Psychology": ["psicología", "la"],
+  "Travel": ["libros de viajes", "los"],
+  "Short Stories": ["relato", "el"],
+  "Classics": ["clásicos", "los"],
+  "Young Adult Fiction": ["juvenil", "lo"],
+  "Literary Collections": ["antologías", "las"],
+  "Family Life": ["novela familiar", "la"],
+};
+// "Fiction" a secas no dice nada: todas las novelas lo son.
+const isGenericGenre = (g) => g === "Fiction";
+
+function genreEs(g) {
+  return GENRE_ES[g?.trim()]?.[0] || (g || "").toLowerCase();
+}
+function genreArticle(g) {
+  return GENRE_ES[g?.trim()]?.[1] || "lo";
+}
+function capitalize(text) {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+function formatDecimal(n) {
+  return n.toLocaleString("es-ES", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+// Elige una variante de frase según el libro: siempre la misma para el mismo
+// libro, pero distinta entre libros, para que la lista no repita un molde.
+function variantFor(id, options) {
+  const hash = [...String(id)].reduce((h, c) => h + c.charCodeAt(0), 0);
+  return options[hash % options.length];
+}
+// "A, B y C", con "e" delante de las palabras que empiezan por el sonido /i/ ("y Kazuo", "e Isabel")
+function joinEs(items) {
+  if (items.length < 2) return items;
+  const last = items[items.length - 1];
+  const lastText = typeof last === "string" ? last : last.props.children;
+  const conjunction = /^h?i(?![aeiouáéó])/i.test(lastText) ? " e " : " y ";
+  return items.slice(0, -1).flatMap((it, i) => (i === 0 ? [it] : [", ", it])).concat([conjunction, last]);
+}
+
+function ProfileSentence({ profile }) {
+  const authors = profile.topAuthors.slice(0, 2);
+  const genres = profile.topGenres.filter((g) => !isGenericGenre(g)).slice(0, 2).map(genreEs);
+  const pages = profile.avgPages ? Math.round(profile.avgPages / 10) * 10 : null;
+  return (
+    <>
+      Has leído <b className="rr-em">{profile.totalRead} libros</b>.{" "}
+      {authors.length > 0 && <>Vuelves una y otra vez a {joinEs(authors.map((a) => <b key={a} className="rr-em">{a}</b>))}</>}
+      {genres.length > 0 && <>, casi siempre en {joinEs(genres)}</>}
+      {pages && (pages < 220
+        ? <>, y te gustan cortos: tu media no llega a las {pages} páginas.</>
+        : pages <= 420
+        ? <>, y tus libros rondan las {pages} páginas: ni cuentos ni ladrillos.</>
+        : <>, y no te asustan los tochos: tu media anda por las {pages} páginas.</>)}
+      {!pages && "."}
+    </>
+  );
+}
+
+// Por qué recomendamos un libro, dicho como lo diría una librera. La versión
+// larga (destacado y ficha) junta todas las razones; la corta se queda con la
+// principal y varía la frase de un libro a otro.
+function reasonFor(r, profile, { long = false } = {}) {
+  const author = r.authors[0];
+  const mainGenre = profile.topGenres.find((g) => !isGenericGenre(g));
+  const genre = r.matchedGenres.find((g) => !isGenericGenre(g));
+  const pick = (options) => (long ? options[0] : variantFor(r.id, options));
+  const parts = [];
+  if (r.authorMatch) {
+    parts.push(pick([
+      `Ya conoces a ${author} y este todavía no lo tienes.`,
+      `Más ${author}: este aún no está en tu biblioteca.`,
+      `De ${author}, a quien vuelves a menudo. Este te falta.`,
+    ]));
+  }
+  if (genre && (long || !r.authorMatch)) {
+    const name = genreEs(genre);
+    const article = genreArticle(genre);
+    parts.push(genre === mainGenre
+      ? pick([`Es ${name}, lo que más lees.`, `${capitalize(name)}: tu terreno de siempre.`, `Encaja con tu gusto por ${article} ${name}.`])
+      : pick([`Es ${name}, que también está entre lo tuyo.`, `${capitalize(name)}, que también lees a menudo.`, `Tira hacia ${article} ${name}, otra de tus debilidades.`]));
+  }
+  if (long && r.averageRating >= 4.2 && r.ratingsCount >= 1000) {
+    parts.push(`Y quien lo ha leído le da un ${formatDecimal(r.averageRating)} de media.`);
+  }
+  if (!parts.length) {
+    parts.push(r.averageRating >= 4
+      ? `No se parece a lo que sueles leer, pero tiene un ${formatDecimal(r.averageRating)} de media: vale la pena el desvío.`
+      : "Encaja con el tono general de tu biblioteca.");
+  }
+  return parts.join(" ");
+}
+
 function loadJSON(key) {
   try {
     const raw = localStorage.getItem(key);
@@ -372,7 +485,6 @@ export default function ReadingRoom() {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [previousRecs, setPreviousRecs] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [profileCollapsed, setProfileCollapsed] = useState(false);
   const [syncStatus, setSyncStatus] = useState("checking"); // checking | available | unavailable
   const [syncRows, setSyncRows] = useState(null);
   const [syncUserId, setSyncUserId] = useState("");
@@ -699,7 +811,7 @@ export default function ReadingRoom() {
         matchedGenres.forEach((g) => next.add(g));
         return next;
       });
-      setAnnouncement(`Recomendación descartada. Bajaremos el peso de "${matchedGenres[0]}" en el resto de sugerencias.`);
+      setAnnouncement(`Recomendación descartada. Te enseñaré menos ${genreEs(matchedGenres.find((g) => !isGenericGenre(g)) || matchedGenres[0])}.`);
     } else if (reason === "read") {
       setAnnouncement("Recomendación descartada porque ya la habías leído.");
     } else {
@@ -774,30 +886,17 @@ export default function ReadingRoom() {
   }, [allRecs, dismissed, saved, activeGenre, sortBy, avoidedGenres]);
 
   const forgetAvoidedGenres = useCallback(() => setAvoidedGenres(new Set()), []);
+  const avoidedLabels = Array.from(avoidedGenres).filter((g) => !isGenericGenre(g)).map(genreEs);
 
   const allDismissed = allRecs.length > 0 && dismissed.size === allRecs.length;
 
   return (
-    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: PALETTE.ink, position: "relative" }}>
+    <div style={{ background: PALETTE.bg, minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", color: PALETTE.ink, position: "relative", overflowX: "clip" }}>
       <GlobalStyle />
       <div className="wash" />
       <div aria-live="polite" className="sr-only">{announcement}</div>
 
-      <header className="rr-header" style={{ maxWidth: "720px", margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
-        <BookMark size={72} />
-        <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>a partir de tu Goodreads</div>
-        <h1
-          ref={!selectedBook ? headingRef : null}
-          tabIndex={-1}
-          className="rr-brand rr-h1"
-          style={{ margin: 0, outline: "none" }}
-        >
-          Next Read <span style={{ color: PALETTE.terracottaDeep }}>Lab</span>
-        </h1>
-        <div className="rr-diamond" />
-      </header>
-
-      {stage === "ready" && profile && (
+      {stage === "ready" && profile ? (
         <TopBar
           dismissedCount={dismissed.size}
           onHome={() => { setSelectedBook(null); setShowTrash(false); }}
@@ -806,12 +905,28 @@ export default function ReadingRoom() {
           onRefresh={refreshResults}
           refreshing={refreshing}
         />
+      ) : (
+        <header className="rr-header" style={{ maxWidth: "720px", margin: "0 auto", textAlign: "center", position: "relative", zIndex: 1 }}>
+          <BookMark size={72} animated={stage === "building"} />
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="rr-brand rr-h1"
+            style={{ margin: 0, outline: "none" }}
+          >
+            Next Read <span style={{ color: PALETTE.terracottaDeep }}>Lab</span>
+          </h1>
+          <div className="rr-diamond" />
+        </header>
       )}
 
       {confirmingReset && (
         <ConfirmModal
-          title="¿Analizar otro CSV?"
-          message={`Vas a perder ${saved.size > 0 ? `${saved.size} libro(s) guardado(s)` : ""}${saved.size > 0 && dismissed.size > 0 ? " y " : ""}${dismissed.size > 0 ? `${dismissed.size} descarte(s)` : ""} de esta sesión. Esta acción no se puede deshacer.`}
+          title="¿Cambiar de biblioteca?"
+          message={`Si empiezas con otra biblioteca, se borran ${[
+            saved.size > 0 && (saved.size === 1 ? "el libro que te has apuntado" : `los ${saved.size} libros que te has apuntado`),
+            dismissed.size > 0 && (dismissed.size === 1 ? "el que has descartado" : `los ${dismissed.size} que has descartado`),
+          ].filter(Boolean).join(" y ")}. No hay forma de recuperarlos.`}
           confirmLabel="sí, empezar de nuevo"
           cancelLabel="cancelar"
           onConfirm={reset}
@@ -824,6 +939,7 @@ export default function ReadingRoom() {
         {selectedBook ? (
           <BookDetailScreen
             book={selectedBook}
+            profile={profile}
             headingRef={headingRef}
             isSaved={saved.has(selectedBook.id)}
             onToggleSaved={() => toggleSaved(selectedBook.id)}
@@ -862,7 +978,7 @@ export default function ReadingRoom() {
 
             {stage === "ready" && profile && (
               <>
-                <ProfilePanel profile={profile} collapsed={profileCollapsed} onToggleCollapsed={() => setProfileCollapsed((c) => !c)} />
+                <ProfilePanel profile={profile} />
                 <FilterBar
                   topGenres={profile.topGenres}
                   hasAuthorMatches={allRecs.some((r) => r.authorMatch)}
@@ -873,10 +989,10 @@ export default function ReadingRoom() {
                   setSortBy={setSortBy}
                 />
                 {avoidedGenres.size > 0 && (
-                  <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <span>Bajando el peso de: {Array.from(avoidedGenres).join(", ")}</span>
-                    <button className="rr-link" style={{ fontSize: "12px" }} onClick={forgetAvoidedGenres}>olvidar</button>
-                  </div>
+                  <p className="rr-avoided">
+                    {avoidedLabels.length ? <>Te enseño menos {joinEs(avoidedLabels)}, como me pediste.</> : "Te enseño menos de los géneros que descartaste."}{" "}
+                    <button className="rr-link" style={{ fontSize: "13px" }} onClick={forgetAvoidedGenres}>olvídalo</button>
+                  </p>
                 )}
                 {allDismissed ? (
                   <div className="rr-card" style={{ padding: "26px", textAlign: "center" }}>
@@ -886,6 +1002,7 @@ export default function ReadingRoom() {
                 ) : (
                   <RecommendationsPanel
                     recs={visibleRecs}
+                    profile={profile}
                     saved={saved}
                     onDismiss={dismissRec}
                     onToggleSaved={toggleSaved}
@@ -904,214 +1021,101 @@ export default function ReadingRoom() {
         )}
         </div>
       </main>
-      <footer className="rr-colophon">
-        NEXT READ LAB
-        <span className="rr-colophon-dot" aria-hidden="true"></span>
-        hecha por{" "}
-        <a
-          href="https://github.com/gdlaura01"
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: "2px" }}
-        >
-          github.com/gdlaura01
-        </a>
-        <span className="rr-colophon-dot" aria-hidden="true"></span>
-        {new Date().getFullYear()}
+      <footer className="rr-footer">
+        Next Read Lab es un proyecto de{" "}
+        <a href="https://github.com/gdlaura01" target="_blank" rel="noreferrer">gdlaura01</a>, {new Date().getFullYear()}.
       </footer>
     </div>
   );
 }
 
-function PickPane({ onSelect, fileInputRef, syncStatus, onAccessSynced, onConnect, onSwitchUser, connecting, connectError }) {
-  const [dragging, setDragging] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [userId, setUserId] = useState("");
-
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", marginBottom: "22px" }}>
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); onSelect(e.dataTransfer.files?.[0]); }}
-          className="rr-card"
-          style={{ padding: "30px 26px", textAlign: "center", background: dragging ? PALETTE.sageWash : PALETTE.white }}
-        >
-          <Upload size={22} color={PALETTE.terracotta} strokeWidth={1.4} style={{ marginBottom: "14px" }} />
-          <p className="rr-title" style={{ fontSize: "17px", marginBottom: "8px" }}>Sube tu CSV</p>
-          <p style={{ fontSize: "13px", color: PALETTE.inkSoft, marginBottom: "20px", lineHeight: 1.5 }}>
-            Exporta tu biblioteca desde Goodreads y súbela aquí. Puedes arrastrar el archivo sobre esta tarjeta.
-          </p>
-          <label className="rr-btn" style={{ display: "inline-flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-            <Upload size={14} strokeWidth={1.4} />
-            elegir archivo
-            <input ref={fileInputRef} type="file" accept=".csv" className="visually-hidden" onChange={(e) => onSelect(e.target.files?.[0])} />
-          </label>
-        </div>
-
-        <div className="rr-card" style={{ padding: "30px 26px", textAlign: "center" }}>
-          <RefreshCw size={22} color={PALETTE.ink} strokeWidth={1.4} style={{ marginBottom: "14px" }} />
-          <p className="rr-title" style={{ fontSize: "17px", marginBottom: "8px" }}>Accede a tu Next Read Lab</p>
-
-          {syncStatus === "checking" && (
-            <p style={{ fontSize: "13px", color: PALETTE.inkSoft }}>Comprobando…</p>
-          )}
-
-          {syncStatus === "available" && (
-            <>
-              <p style={{ fontSize: "13px", color: PALETTE.inkSoft, marginBottom: "20px", lineHeight: 1.5 }}>
-                Tu cuenta de Goodreads ya está conectada en este navegador. Entra directamente, sin subir ningún archivo.
-              </p>
-              <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
-                <button className="rr-btn rr-btn-filled" onClick={onAccessSynced}>
-                  <Check size={14} strokeWidth={1.6} /> entrar
-                </button>
-                <button className="rr-link" onClick={onSwitchUser} style={{ fontSize: "12px" }}>
-                  cambiar de usuario
-                </button>
-              </div>
-            </>
-          )}
-
-          {syncStatus === "unavailable" && (
-            <>
-              <p style={{ fontSize: "13px", color: PALETTE.inkSoft, marginBottom: "16px", lineHeight: 1.5 }}>
-                Escribe tu ID de Goodreads y te conectamos directamente, sin instalar ni ejecutar nada.
-              </p>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="tu ID de Goodreads, ej. 12345678"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value.replace(/[^0-9]/g, ""))}
-                className="rr-select"
-                style={{ width: "100%", marginBottom: "12px", textAlign: "center" }}
-                disabled={connecting}
-              />
-              <button
-                className="rr-btn rr-btn-filled"
-                onClick={() => onConnect(userId)}
-                disabled={connecting || !userId}
-                style={{ display: "inline-flex", alignItems: "center", gap: "8px", opacity: connecting || !userId ? 0.6 : 1 }}
-              >
-                {connecting ? <PulseDot /> : <RefreshCw size={14} strokeWidth={1.4} />}
-                {connecting ? "conectando…" : "conectar con Goodreads"}
-              </button>
-              {connectError && (
-                <p style={{ fontSize: "12px", color: PALETTE.terracottaDeep, marginTop: "10px", lineHeight: 1.5 }}>{connectError}</p>
-              )}
-              <p style={{ fontSize: "12px", color: PALETTE.inkSoft, marginTop: "14px", lineHeight: 1.6 }}>
-                Tu ID aparece en la URL de tu perfil de Goodreads
-                (goodreads.com/user/show/<strong>12345678</strong>-tu-nombre).
-                Tu perfil debe ser público (Settings → Profile) para que esto funcione.
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-
-      <button className="rr-link" onClick={() => setShowHelp((s) => !s)} aria-expanded={showHelp}>
-        <ChevronDown size={12} strokeWidth={1.4} style={{ transform: showHelp ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
-        ¿no sabes cómo conseguir el CSV?
-      </button>
-      {showHelp && (
-        <div className="rr-card" style={{ marginTop: "12px", padding: "20px 24px" }}>
-          <ol style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", lineHeight: 1.9, color: PALETTE.inkSoft }}>
-            <li>Entra en Goodreads desde el navegador e inicia sesión.</li>
-            <li>Ve a <strong style={{ color: PALETTE.ink }}>My Books</strong>.</li>
-            <li>En el menú lateral, <strong style={{ color: PALETTE.ink }}>Tools → Import and export</strong>.</li>
-            <li>Pulsa <strong style={{ color: PALETTE.ink }}>Export Library</strong> y descarga el archivo.</li>
-          </ol>
-        </div>
-      )}
-
-      <p style={{ fontSize: "12px", color: PALETTE.inkSoft, marginTop: "26px" }}>
-        Tu archivo se procesa solo en este navegador: no se envía a ningún servidor.
-      </p>
-    </div>
-  );
+// Un primer vistazo al CSV antes de analizarlo, con los mismos criterios que
+// buildRecommendations, para confirmar que es el archivo correcto y avisar
+// antes de esperar si no sirve.
+function summarizeLibrary(rows) {
+  const books = rows.filter((r) => (r["Title"] || "").trim());
+  const read = books.filter((r) => (r["Exclusive Shelf"] || "").trim() === "read");
+  const rating = (r) => parseFloat(r["My Rating"] || "0");
+  return {
+    total: books.length,
+    read: read.length,
+    loved: read.filter((r) => rating(r) >= 4).length,
+    // Goodreads exporta primero lo último que añadiste; quitamos la serie entre paréntesis del final
+    fiveStars: read.filter((r) => rating(r) === 5).slice(0, 3).map((r) => r["Title"].trim().replace(/\s*\([^)]*\)$/, "")),
+  };
 }
 
 function ConfirmPane({ file, onConfirm, onCancel }) {
-  const sizeKb = Math.round(file.size / 1024);
-  return (
-    <div className="rr-card" style={{ padding: "30px 32px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "20px" }}>
-        <div style={{ width: "42px", height: "42px", flexShrink: 0, borderRadius: "50%", background: PALETTE.sageWash, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <FileText size={19} color={PALETTE.ink} strokeWidth={1.3} />
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "14px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
-          <div style={{ fontSize: "12px", color: PALETTE.inkSoft }}>{sizeKb} KB</div>
-        </div>
-      </div>
-      <p style={{ fontSize: "13px", color: PALETTE.inkSoft, marginBottom: "24px", lineHeight: 1.6 }}>
-        Voy a leer este archivo y generar recomendaciones a partir de tus valoraciones. Todo ocurre aquí mismo, en tu navegador.
-      </p>
-      <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
-        <button className="rr-btn rr-btn-filled" onClick={onConfirm}>
-          <Check size={14} strokeWidth={1.6} /> analizar mi biblioteca
-        </button>
-        <button className="rr-link" onClick={onCancel}>elegir otro archivo</button>
-      </div>
-    </div>
-  );
-}
+  const [summary, setSummary] = useState(null); // null mientras lee; false si no ha podido leerlo
 
-function BuildingPane({ statusMsg }) {
-  return (
-    <div className="rr-card" style={{ padding: "60px 30px", textAlign: "center" }}>
-      <BookMark size={64} animated />
-      <p style={{ marginTop: "18px", fontSize: "14px", color: PALETTE.inkSoft }}>{statusMsg}</p>
-    </div>
-  );
-}
+  useEffect(() => {
+    let alive = true;
+    setSummary(null);
+    parseGoodreadsCsv(file)
+      .then((rows) => { if (alive) setSummary(summarizeLibrary(rows)); })
+      .catch(() => { if (alive) setSummary(false); });
+    return () => { alive = false; };
+  }, [file]);
 
-function ProfilePanel({ profile, collapsed, onToggleCollapsed }) {
+  const unusable = summary === false || summary?.total === 0 || summary?.read === 0;
+
   return (
-    <section style={{ marginBottom: "32px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: collapsed ? 0 : "16px" }}>
-        <div style={{ fontSize: "12px", color: PALETTE.inkSoft }}>
-          {profile.fileName ? `${profile.fileName} · ` : ""}
-          <span className="rr-stat-inline">{profile.totalRead}</span> libros leídos
-        </div>
-        <button className="rr-link" onClick={onToggleCollapsed} aria-expanded={!collapsed} style={{ fontSize: "12px" }}>
-          {collapsed ? "mostrar ficha de lectora" : "ocultar"}
-          <ChevronDown size={12} strokeWidth={1.6} style={{ transform: collapsed ? "none" : "rotate(180deg)", transition: "transform 0.15s ease" }} />
-        </button>
-      </div>
-      {!collapsed && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: "16px" }}>
-          <div className="rr-card" style={{ padding: "18px 20px", background: PALETTE.sageWash }}>
-            <div className="rr-label">autores que más repites</div>
-            <div style={{ fontSize: "14px", lineHeight: 1.5, marginTop: "8px" }}>{profile.topAuthors.length ? profile.topAuthors.slice(0, 4).join(", ") : "sin datos suficientes"}</div>
-          </div>
-          <div className="rr-card" style={{ padding: "18px 20px", background: PALETTE.white }}>
-            <div className="rr-label">géneros dominantes</div>
-            <div style={{ fontSize: "14px", lineHeight: 1.5, marginTop: "8px" }}>{profile.topGenres.length ? profile.topGenres.slice(0, 4).join(", ") : "sin datos suficientes"}</div>
-          </div>
-          <div className="rr-card" style={{ padding: "18px 20px", background: "#F4EFDE" }}>
-            <div className="rr-label">extensión media</div>
-            {profile.avgPages ? (
-              <div style={{ marginTop: "6px", display: "flex", alignItems: "baseline", gap: "6px" }}>
-                <span className="rr-stat-big">{profile.avgPages}</span>
-                <span style={{ fontSize: "12px", color: PALETTE.inkSoft }}>páginas</span>
-              </div>
-            ) : (
-              <div style={{ fontSize: "14px", lineHeight: 1.5, marginTop: "8px" }}>sin datos</div>
+    <div className="rr-pick">
+      <div className="rr-confirm" aria-live="polite">
+        {summary === null ? (
+          <p className="rr-confirm-lead rr-soft">Echando un vistazo a tu archivo…</p>
+        ) : summary === false || summary.total === 0 ? (
+          <>
+            <p className="rr-confirm-lead">En este archivo no encuentro libros.</p>
+            <p className="rr-confirm-sub">
+              ¿Es la exportación de Goodreads? Suele llamarse goodreads_library_export.csv y la descargas desde My Books, en Import and export.
+            </p>
+          </>
+        ) : summary.read === 0 ? (
+          <>
+            <p className="rr-confirm-lead">Veo {summary.total === 1 ? "un libro" : `${summary.total} libros`}, pero ninguno marcado como leído.</p>
+            <p className="rr-confirm-sub">
+              Sin saber qué has leído no puedo adivinar qué te gusta. Marca en Goodreads los que ya hayas terminado y vuelve a exportar la biblioteca.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="rr-confirm-lead">
+              {summary.read === summary.total
+                ? `Tengo tu biblioteca: ${summary.read} ${summary.read === 1 ? "libro leído" : "libros leídos"}.`
+                : `Tengo tu biblioteca: ${summary.total} libros, ${summary.read} ya ${summary.read === 1 ? "leído" : "leídos"}.`}
+            </p>
+            {summary.fiveStars.length > 0 && (
+              <p className="rr-confirm-sub">
+                Entre tus cinco estrellas más recientes {summary.fiveStars.length === 1 ? "está" : "están"}{" "}
+                {joinEs(summary.fiveStars.map((title) => <cite key={title}>{title}</cite>))}.
+              </p>
             )}
-          </div>
+            <p className="rr-confirm-sub">
+              {summary.loved >= 3
+                ? `Con los ${summary.loved} que valoraste con cuatro o cinco estrellas tengo de sobra para empezar.`
+                : "Has valorado pocos con cuatro o cinco estrellas, así que tiraré de todo lo que has leído. Las recomendaciones serán algo menos finas."}
+            </p>
+          </>
+        )}
+        <div className="rr-actions" style={{ justifyContent: "center" }}>
+          {!unusable && (
+            <button className="rr-btn rr-btn-filled" onClick={onConfirm} disabled={summary === null} style={{ opacity: summary === null ? 0.6 : 1 }}>
+              <Check size={15} strokeWidth={1.7} /> buscar mi próxima lectura
+            </button>
+          )}
+          <button className="rr-link" onClick={onCancel}>{unusable ? "elegir otro archivo" : "no es este archivo"}</button>
         </div>
-      )}
-    </section>
+      </div>
+      <p className="rr-confirm-file">He leído {file.name} aquí mismo, sin que salga de tu navegador.</p>
+    </div>
   );
 }
 
 function FilterBar({ topGenres, hasAuthorMatches, hasSaved, activeGenre, setActiveGenre, sortBy, setSortBy }) {
   const chips = [
     "todos",
-    ...topGenres.slice(0, 4),
+    ...topGenres.filter((g) => !isGenericGenre(g)).slice(0, 4),
     ...(hasAuthorMatches ? ["autor afín"] : []),
     ...(hasSaved ? ["guardados"] : []),
   ];
@@ -1122,7 +1126,7 @@ function FilterBar({ topGenres, hasAuthorMatches, hasSaved, activeGenre, setActi
           const isActive = activeGenre === g;
           return (
             <button key={g} onClick={() => setActiveGenre(g)} aria-pressed={isActive} className="rr-chip" style={{ background: isActive ? PALETTE.terracottaDeep : PALETTE.white, color: isActive ? PALETTE.white : PALETTE.ink, borderColor: isActive ? PALETTE.terracottaDeep : PALETTE.sage }}>
-              {g}
+              {g === "todos" || g === "autor afín" || g === "guardados" ? g : genreEs(g)}
             </button>
           );
         })}
@@ -1194,102 +1198,276 @@ function SortDropdown({ value, onChange, options }) {
   );
 }
 
-function RecommendationsPanel({ recs, saved, onDismiss, onToggleSaved, onSelect }) {
-  const [askingId, setAskingId] = useState(null);
-  if (!recs.length) {
-    return <p style={{ fontSize: "14px", color: PALETTE.inkSoft, textAlign: "center", padding: "20px 0" }}>Aquí no hay nada que encaje con este filtro — prueba con «todos» para ver el resto de tu estantería.</p>;
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-      {recs.map((r) => {
-        const isSaved = saved.has(r.id);
-        const isAsking = askingId === r.id;
-        return (
-          <div
-            key={r.id}
-            className="rr-card rr-card-clickable"
-            role="button"
-            tabIndex={0}
-            onClick={() => !isAsking && onSelect(r)}
-            onKeyDown={(e) => { if (!isAsking && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(r); } }}
-            style={{ padding: "18px 20px", display: "flex", gap: "16px", background: PALETTE.white, cursor: isAsking ? "default" : "pointer" }}
-          >
-            <div className="rr-cover" style={{ width: "60px", height: "86px", flexShrink: 0, borderRadius: "10px", background: PALETTE.sageWash, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-              {r.thumbnail ? (
-                <img src={r.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : (
-                <BookOpen size={18} strokeWidth={1.3} color={PALETTE.ink} />
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-                <div className="rr-title" style={{ fontSize: "16px" }}>{r.title}</div>
-                {!isAsking && (
-                  <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                    <button
-                      className="rr-icon-btn"
-                      onClick={(e) => { e.stopPropagation(); onToggleSaved(r.id); }}
-                      aria-label={isSaved ? `Quitar ${r.title} de guardados` : `Guardar ${r.title} para más tarde`}
-                      title={isSaved ? "Guardado" : "Guardar para más tarde"}
-                    >
-                      {isSaved ? <BookmarkCheck size={15} strokeWidth={1.6} color={PALETTE.terracotta} /> : <Bookmark size={15} strokeWidth={1.6} />}
-                    </button>
-                    <button
-                      className="rr-icon-btn"
-                      onClick={(e) => { e.stopPropagation(); setAskingId(r.id); }}
-                      aria-label={`Descartar ${r.title}`}
-                      title="No me interesa"
-                    >
-                      <X size={15} strokeWidth={1.6} />
-                    </button>
-                  </div>
-                )}
-              </div>
+function PickPane({ onSelect, fileInputRef, syncStatus, onAccessSynced, onConnect, onSwitchUser, connecting, connectError }) {
+  const [dragging, setDragging] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [userId, setUserId] = useState("");
 
-              {isAsking ? (
-                <div onClick={(e) => e.stopPropagation()} style={{ marginTop: "6px" }}>
-                  <p style={{ fontSize: "12px", color: PALETTE.inkSoft, margin: "0 0 8px 0" }}>¿Por qué descartas esta recomendación?</p>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <button
-                      className="rr-chip"
-                      style={{ borderColor: PALETTE.sage }}
-                      onClick={() => { onDismiss(r.id, "genre", r.matchedGenres); setAskingId(null); }}
-                    >
-                      no me interesa este género
-                    </button>
-                    <button
-                      className="rr-chip"
-                      style={{ borderColor: PALETTE.sage }}
-                      onClick={() => { onDismiss(r.id, "read"); setAskingId(null); }}
-                    >
-                      ya lo he leído
-                    </button>
-                    <button className="rr-link" style={{ fontSize: "12px" }} onClick={() => setAskingId(null)}>cancelar</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ fontSize: "12px", color: PALETTE.inkSoft, marginBottom: "8px" }}>{r.authors.join(", ") || "Autor desconocido"}</div>
-                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                    {r.averageRating > 0 && (
-                      <span style={{ fontSize: "12px", color: PALETTE.inkSoft, display: "flex", alignItems: "center", gap: "3px" }}>
-                        <Star size={11} strokeWidth={1.3} color={PALETTE.terracotta} fill={PALETTE.terracotta} /> {r.averageRating.toFixed(1)}
-                      </span>
-                    )}
-                    {r.authorMatch && <span className="rr-pill">autor afín</span>}
-                    {r.matchedGenres.slice(0, 2).map((g) => <span key={g} className="rr-pill">{g}</span>)}
-                  </div>
-                </>
-              )}
-            </div>
+  return (
+    <div className="rr-pick">
+      <p className="rr-pitch">Dime qué has leído y te digo qué leer después.</p>
+
+      {syncStatus === "available" ? (
+        <div className="rr-drop">
+          <p className="rr-drop-title">Tu Goodreads ya está conectado en este navegador.</p>
+          <div className="rr-actions" style={{ justifyContent: "center" }}>
+            <button className="rr-btn rr-btn-filled" onClick={onAccessSynced}>
+              <Check size={15} strokeWidth={1.7} /> ver mis recomendaciones
+            </button>
+            <button className="rr-link" onClick={onSwitchUser}>no soy yo</button>
           </div>
-        );
-      })}
+        </div>
+      ) : (
+        <>
+          <label
+            className="rr-drop"
+            data-dragging={dragging || undefined}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); onSelect(e.dataTransfer.files?.[0]); }}
+          >
+            <p className="rr-drop-title">Suelta aquí la exportación de tu biblioteca</p>
+            <p className="rr-drop-sub">El archivo CSV que te da Goodreads. Lo leo en tu navegador y no sale de aquí.</p>
+            <span className="rr-btn rr-btn-filled"><Upload size={15} strokeWidth={1.6} /> elegir el archivo</span>
+            <input ref={fileInputRef} type="file" accept=".csv" className="visually-hidden" onChange={(e) => onSelect(e.target.files?.[0])} />
+          </label>
+
+          <button className="rr-link rr-help-toggle" onClick={() => setShowHelp((s) => !s)} aria-expanded={showHelp}>
+            ¿dónde está ese archivo?
+            <ChevronDown size={12} strokeWidth={1.6} style={{ transform: showHelp ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+          </button>
+          {showHelp && (
+            <p className="rr-help">
+              En Goodreads, entra en <strong>My Books</strong>, busca <strong>Import and export</strong> en la columna de la izquierda
+              y pulsa <strong>Export Library</strong>. Tarda un minuto en prepararse.
+            </p>
+          )}
+
+          <div className="rr-alt">
+            <p>
+              ¿Prefieres no descargar nada? Escribe tu número de usuario de Goodreads (el que sale en la dirección de tu perfil,
+              goodreads.com/user/show/<strong>12345678</strong>) y lo leo directamente. Tu perfil tiene que ser público.
+            </p>
+            <div className="rr-alt-row">
+              <input
+                type="text"
+                inputMode="numeric"
+                aria-label="Tu número de usuario de Goodreads"
+                placeholder="por ejemplo, 12345678"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value.replace(/[^0-9]/g, ""))}
+                className="rr-select"
+                disabled={connecting}
+              />
+              <button className="rr-btn" onClick={() => onConnect(userId)} disabled={connecting || !userId} style={{ opacity: connecting || !userId ? 0.6 : 1 }}>
+                {connecting && <PulseDot />}
+                {connecting ? "conectando…" : "conectar"}
+              </button>
+            </div>
+            {connectError && <p className="rr-error">{connectError}</p>}
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-function BookDetailScreen({ book, onBack, isSaved, onToggleSaved, headingRef }) {
+// Los pasos siguen el orden de los mensajes de buildRecommendations.
+const BUILD_STEPS = [
+  ["Leyendo", "Leo tu biblioteca"],
+  ["Consultando", "Miro de qué van tus favoritos"],
+  ["Buscando", "Busco libros que se les parezcan"],
+];
+
+function BuildingPane({ statusMsg }) {
+  const current = Math.max(0, BUILD_STEPS.findIndex(([prefix]) => statusMsg.startsWith(prefix)));
+  return (
+    <div className="rr-building">
+      <ol className="rr-steps">
+        {BUILD_STEPS.map(([, label], i) => (
+          <li key={label} data-state={i < current ? "done" : i === current ? "now" : "next"} aria-current={i === current ? "step" : undefined}>
+            <span className="rr-step-mark">{i < current && <Check size={13} strokeWidth={2.4} />}</span>
+            {label}{i === current ? "…" : ""}
+          </li>
+        ))}
+      </ol>
+      <p className="rr-building-note">
+        Voy despacio a propósito: Google Books se enfada si le pregunto demasiado rápido. Suele tardar menos de un minuto.
+      </p>
+    </div>
+  );
+}
+
+// Los autores que más lees, como lomos sobre una balda. El alto y el ancho
+// salen del nombre, para que cada biblioteca tenga su propia silueta.
+const SPINE_COLORS = [PALETTE.terracottaDeep, PALETTE.sage, PALETTE.ink, PALETTE.terracotta, "#E9DFC6", PALETTE.inkSoft];
+const LIGHT_SPINES = new Set([PALETTE.sage, "#E9DFC6"]);
+
+function Shelf({ authors }) {
+  return (
+    <div className="rr-shelf" aria-hidden="true">
+      <div className="rr-spines">
+        {authors.slice(0, 6).map((author, i) => {
+          const color = SPINE_COLORS[i];
+          return (
+            <div
+              key={author}
+              className="rr-spine"
+              style={{
+                background: color,
+                color: LIGHT_SPINES.has(color) ? PALETTE.ink : PALETTE.bg,
+                height: 128 + ((author.length * 7) % 48),
+                width: 40 + ((author.length * 3) % 14),
+                transform: i === 3 ? "rotate(-7deg) translateX(-3px)" : undefined,
+              }}
+            >
+              <span>{author}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="rr-board" />
+    </div>
+  );
+}
+
+function ProfilePanel({ profile }) {
+  return (
+    <section className="rr-profile">
+      {profile.topAuthors.length > 0 && <Shelf authors={profile.topAuthors} />}
+      <p className="rr-note">
+        He mirado tu biblioteca con calma. <ProfileSentence profile={profile} /> Con eso, esto es lo que te pondría en las manos.
+      </p>
+    </section>
+  );
+}
+
+function BookCover({ book, width, height, className = "" }) {
+  return (
+    <div className={`rr-book-cover ${className}`} style={{ width, height }}>
+      {book.thumbnail ? <img src={book.thumbnail} alt="" /> : <BookOpen size={Math.round(width / 4)} strokeWidth={1.2} color={PALETTE.ink} />}
+    </div>
+  );
+}
+
+function DiscardReasons({ book, onDismiss, onCancel }) {
+  return (
+    <div className="rr-ask" onClick={(e) => e.stopPropagation()}>
+      <span>¿Qué no te convence?</span>
+      <button className="rr-chip" onClick={() => onDismiss(book.id, "genre", book.matchedGenres)}>el género</button>
+      <button className="rr-chip" onClick={() => onDismiss(book.id, "read")}>ya lo he leído</button>
+      <button className="rr-link" style={{ fontSize: "12px" }} onClick={onCancel}>da igual</button>
+    </div>
+  );
+}
+
+function BookIconActions({ book, isSaved, onToggleSaved, onAskDiscard }) {
+  return (
+    <span className="rr-icon-actions">
+      <button
+        className="rr-icon-btn"
+        onClick={(e) => { e.stopPropagation(); onToggleSaved(book.id); }}
+        aria-label={isSaved ? `Quitar ${book.title} de tu lista` : `Apuntar ${book.title} para más tarde`}
+        title={isSaved ? "En tu lista" : "Me lo apunto"}
+      >
+        {isSaved ? <BookmarkCheck size={16} strokeWidth={1.7} color={PALETTE.terracotta} /> : <Bookmark size={16} strokeWidth={1.7} />}
+      </button>
+      <button
+        className="rr-icon-btn"
+        onClick={(e) => { e.stopPropagation(); onAskDiscard(); }}
+        aria-label={`Descartar ${book.title}`}
+        title="No me interesa"
+      >
+        <X size={16} strokeWidth={1.7} />
+      </button>
+    </span>
+  );
+}
+
+// Tres niveles: un libro para empezar, tres por si te quedas con ganas y el
+// resto, en lista, para más adelante.
+function RecommendationsPanel({ recs, profile, saved, onDismiss, onToggleSaved, onSelect }) {
+  const [askingId, setAskingId] = useState(null);
+  if (!recs.length) {
+    return <p className="rr-empty">Con este filtro no queda nada. Prueba con «todos» para ver el resto.</p>;
+  }
+  const [top, ...rest] = recs;
+  const nextUp = rest.slice(0, 3);
+  const later = rest.slice(3);
+  const dismiss = (...args) => { onDismiss(...args); setAskingId(null); };
+  const reasons = (book) => <DiscardReasons book={book} onDismiss={dismiss} onCancel={() => setAskingId(null)} />;
+  const topSaved = saved.has(top.id);
+
+  return (
+    <div>
+      <article className="rr-hero">
+        <div className="rr-hero-stand">
+          <BookCover book={top} width={176} height={264} />
+          <div className="rr-board" />
+        </div>
+        <div className="rr-hero-text">
+          <div className="rr-hero-head">
+            <p className="rr-kicker">Empieza por este</p>
+            <h2 className="rr-hero-title">{top.title}</h2>
+            <p className="rr-byline">{top.authors.join(", ")}</p>
+          </div>
+          <div className="rr-hero-body">
+            <p className="rr-hero-why">{reasonFor(top, profile, { long: true })}</p>
+            {askingId === top.id ? reasons(top) : (
+              <div className="rr-actions">
+                <button className="rr-btn rr-btn-filled" onClick={() => onToggleSaved(top.id)} aria-pressed={topSaved}>
+                  {topSaved ? <BookmarkCheck size={15} strokeWidth={1.7} /> : <Bookmark size={15} strokeWidth={1.7} />}
+                  {topSaved ? "en tu lista" : "me lo apunto"}
+                </button>
+                <button className="rr-link" onClick={() => onSelect(top)}>ver la ficha</button>
+                <button className="rr-link rr-link-quiet" onClick={() => setAskingId(top.id)}>no me convence</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </article>
+
+      {nextUp.length > 0 && <h3 className="rr-section-title">Si te quedas con ganas</h3>}
+      <div className="rr-next-up">
+        {nextUp.map((book) => (
+          <div key={book.id} className="rr-next" onClick={() => askingId !== book.id && onSelect(book)}>
+            <BookCover book={book} width={92} height={138} />
+            <div>
+              <button className="rr-book-title" onClick={(e) => { e.stopPropagation(); onSelect(book); }}>{book.title}</button>
+              <div className="rr-byline-small">{book.authors[0]}</div>
+              {askingId === book.id ? reasons(book) : (
+                <>
+                  <p className="rr-next-why">{reasonFor(book, profile)}</p>
+                  <BookIconActions book={book} isSaved={saved.has(book.id)} onToggleSaved={onToggleSaved} onAskDiscard={() => setAskingId(book.id)} />
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {later.length > 0 && <h3 className="rr-section-title">Para más adelante</h3>}
+      <ul className="rr-later">
+        {later.map((book) => (
+          <li key={book.id} onClick={() => askingId !== book.id && onSelect(book)}>
+            {askingId === book.id ? reasons(book) : (
+              <>
+                <span className="rr-later-text">
+                  {/* Enlace y no botón: un botón no parte línea junto al texto que le sigue */}
+                  <a className="rr-book-title" href="#" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(book); }}>{book.title}</a>, de {book.authors[0] || "autor desconocido"}
+                  <span className="rr-later-why">{reasonFor(book, profile)}</span>
+                </span>
+                <BookIconActions book={book} isSaved={saved.has(book.id)} onToggleSaved={onToggleSaved} onAskDiscard={() => setAskingId(book.id)} />
+              </>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function BookDetailScreen({ book, profile, onBack, isSaved, onToggleSaved, headingRef }) {
   const [edition, setEdition] = useState(null);
   const [editionLoading, setEditionLoading] = useState(true);
   const [translator, setTranslator] = useState(null);
@@ -1317,154 +1495,101 @@ function BookDetailScreen({ book, onBack, isSaved, onToggleSaved, headingRef }) 
   }, [book.id, book.title]);
 
   const publisherNote = edition?.publisher ? getPublisherNote(book.language, edition.publisher) : null;
+  const genres = (book.matchedGenres || []).filter((g) => !isGenericGenre(g)).map(genreEs);
+  const facts = [
+    book.averageRating > 0 ? `${formatDecimal(book.averageRating)} de media en Google Books` : null,
+    genres.length ? capitalize(genres.join(", ")) : null,
+  ].filter(Boolean);
+  const year = edition?.publishedDate ? edition.publishedDate.slice(0, 4) : null;
 
   return (
-    <div style={{ padding: "24px 0 60px" }}>
-      <button className="rr-link" onClick={onBack} style={{ marginBottom: "22px" }}>
-        ← volver a las recomendaciones
-      </button>
+    <div className="rr-detail">
+      <button className="rr-link rr-back" onClick={onBack}>← todas las recomendaciones</button>
 
-      <div style={{ display: "flex", gap: "22px", marginBottom: "28px", flexWrap: "wrap" }}>
-        <div style={{ width: "104px", height: "150px", flexShrink: 0, borderRadius: "10px", background: PALETTE.sageWash, border: "1px solid #EDE6D0", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-          {book.thumbnail ? (
-            <img src={book.thumbnail} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          ) : (
-            <BookOpen size={34} strokeWidth={1.1} color={PALETTE.ink} />
-          )}
-        </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 ref={headingRef} tabIndex={-1} className="rr-title" style={{ fontSize: "24px", margin: "0 0 4px", outline: "none" }}>
-            {book.title}
-          </h2>
-          <div style={{ fontSize: "14px", color: PALETTE.inkSoft, marginBottom: "10px" }}>{book.authors?.join(", ")}</div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", marginBottom: "14px" }}>
-            {book.averageRating > 0 && (
-              <span style={{ fontSize: "12px", color: PALETTE.inkSoft, display: "flex", alignItems: "center", gap: "3px" }}>
-                <Star size={12} strokeWidth={1.3} color={PALETTE.terracotta} fill={PALETTE.terracotta} /> {book.averageRating.toFixed(1)}
-              </span>
-            )}
-            {book.authorMatch && <span className="rr-pill">autor afín</span>}
-            {book.matchedGenres?.slice(0, 3).map((g) => <span key={g} className="rr-pill">{g}</span>)}
-          </div>
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button className="rr-btn" onClick={onToggleSaved} style={{ background: isSaved ? PALETTE.sageWash : PALETTE.sageWash }}>
-              {isSaved ? <BookmarkCheck size={14} strokeWidth={1.6} /> : <Bookmark size={14} strokeWidth={1.6} />}
-              {isSaved ? "guardado" : "guardar para más tarde"}
+      <div className="rr-detail-head">
+        <BookCover book={book} width={132} height={198} />
+        <div>
+          <h2 ref={headingRef} tabIndex={-1} className="rr-hero-title" style={{ outline: "none" }}>{book.title}</h2>
+          <p className="rr-byline">{book.authors?.join(", ")}</p>
+          {facts.length > 0 && <p className="rr-facts">{facts.join(". ")}.</p>}
+          <div className="rr-actions">
+            <button className="rr-btn rr-btn-filled" onClick={onToggleSaved} aria-pressed={isSaved}>
+              {isSaved ? <BookmarkCheck size={15} strokeWidth={1.7} /> : <Bookmark size={15} strokeWidth={1.7} />}
+              {isSaved ? "en tu lista" : "me lo apunto"}
             </button>
             {book.infoLink && (
               <a className="rr-link" href={book.infoLink} target="_blank" rel="noreferrer">
-                ver en Google Books <ExternalLink size={12} strokeWidth={1.6} />
+                en Google Books <ExternalLink size={12} strokeWidth={1.6} />
               </a>
             )}
           </div>
         </div>
       </div>
 
-      <DetailSection title="Sinopsis">
-        <p style={{ fontSize: "14px", lineHeight: 1.7, margin: 0 }}>
-          {book.description || "No hay sinopsis disponible para esta edición en Google Books."}
-        </p>
-      </DetailSection>
+      <blockquote className="rr-why">{reasonFor(book, profile, { long: true })}</blockquote>
 
-      <DetailSection title="Por qué te lo recomendamos">
-        <p style={{ fontSize: "14px", lineHeight: 1.7, margin: 0 }}>
-          {[
-            book.authorMatch && "Ya sigues a este autor en tu biblioteca.",
-            book.matchedGenres?.length ? `Coincide con géneros que lees a menudo: ${book.matchedGenres.slice(0, 3).join(", ")}.` : null,
-            book.averageRating >= 4 ? "Además, tiene muy buena valoración media entre otros lectores." : null,
-          ].filter(Boolean).join(" ") || "Encaja con el perfil general de tu biblioteca."}
-        </p>
-      </DetailSection>
+      <h3 className="rr-detail-title">De qué va</h3>
+      <p className="rr-prose">{book.description || "Google Books no tiene sinopsis para esta edición."}</p>
 
-      <DetailSection title="Mejor edición para comprar">
+      <aside className="rr-buy">
+        <h3 className="rr-detail-title" style={{ marginTop: 0 }}>Si vas a comprarlo</h3>
         {editionLoading ? (
-          <p style={{ fontSize: "13px", color: PALETTE.inkSoft, margin: 0 }}>Buscando la edición en español…</p>
+          <p className="rr-prose rr-soft">Buscando la edición en español…</p>
         ) : edition?.publisher ? (
-          <>
-            <p style={{ fontSize: "14px", lineHeight: 1.7, margin: 0 }}>
-              {edition.publisher}{edition.publishedDate ? ` (${edition.publishedDate.slice(0, 4)})` : ""}.
-              {edition.infoLink && (
-                <>
-                  {" "}
-                  <a href={edition.infoLink} target="_blank" rel="noreferrer" className="rr-link" style={{ fontSize: "13px" }}>
-                    ver ficha
-                  </a>
-                </>
-              )}
-            </p>
-            <p style={{ fontSize: "12px", color: PALETTE.inkSoft, marginTop: "8px", lineHeight: 1.6 }}>
-              {publisherNote
-                ? `Por qué esta: ${publisherNote}`
-                : edition.candidateCount > 1
-                ? "Por qué esta: es la edición en español con más datos confirmados (editorial y fecha) entre varias encontradas en Google Books."
-                : "Por qué esta: es la única edición en español que Google Books tiene catalogada con editorial identificada para este título."}
-            </p>
-          </>
-        ) : (
-          <p style={{ fontSize: "13px", color: PALETTE.inkSoft, margin: 0 }}>
-            No he encontrado una edición en español confirmada en Google Books; compruébalo en tu librería habitual.
+          <p className="rr-prose">
+            Yo buscaría la de <strong>{edition.publisher}</strong>{year ? `, de ${year}` : ""}.{" "}
+            {publisherNote || (edition.candidateCount > 1
+              ? "Es la que tiene los datos más completos entre las ediciones en español que he encontrado."
+              : "Es la única edición en español con editorial identificada que he encontrado.")}
+            {edition.infoLink && <> <a className="rr-link" href={edition.infoLink} target="_blank" rel="noreferrer">verla en Google Books</a></>}
           </p>
+        ) : (
+          <p className="rr-prose">No he encontrado una edición en español fiable en Google Books. Pregunta en tu librería: sabrán cuál tienen.</p>
         )}
-      </DetailSection>
-
-      {needsTranslation && (
-        <DetailSection title="Sobre la traducción">
-          {translatorLoading ? (
-            <p style={{ fontSize: "13px", color: PALETTE.inkSoft, margin: 0 }}>Buscando el traductor…</p>
-          ) : translator ? (
-            <>
-              <p style={{ fontSize: "14px", lineHeight: 1.7, margin: 0 }}>
-                Traducción de <strong>{translator}</strong>{edition?.publisher ? ` para ${edition.publisher}` : ""}.
-              </p>
-              <p style={{ fontSize: "12px", color: PALETTE.inkSoft, marginTop: "8px", lineHeight: 1.6 }}>
-                Por qué esta: es el nombre que figura como traductor en la ficha bibliográfica de Open Library
-                para esta edición (ISBN {edition?.isbn}). Es un dato de catálogo, no una valoración de calidad —
-                verifícalo igualmente en el propio libro antes de comprar.
-              </p>
-            </>
-          ) : (
-            <p style={{ fontSize: "13px", color: PALETTE.inkSoft, lineHeight: 1.7, margin: 0 }}>
-              Este libro se escribió originalmente en otro idioma, pero no he encontrado el nombre del traductor
-              en las fuentes que consulto (Google Books y Open Library no lo tienen catalogado para esta edición,
-              o no he podido acceder a esos datos). No quiero inventarte un nombre, así que
-              {publisherNote ? " revisa el colofón del libro: " : " revisa el colofón del libro antes de comprar, especialmente si es un clásico con varias traducciones en circulación. "}
-              {publisherNote}
-            </p>
-          )}
-        </DetailSection>
-      )}
+        {needsTranslation && (translatorLoading ? (
+          <p className="rr-prose rr-soft">Buscando quién lo tradujo…</p>
+        ) : translator ? (
+          <p className="rr-prose">
+            La traducción es de <strong>{translator}</strong>{edition?.publisher ? ` para ${edition.publisher}` : ""}, según la ficha de
+            Open Library{edition?.isbn ? ` (ISBN ${edition.isbn})` : ""}. Es un dato de catálogo: compruébalo en el colofón antes de comprar.
+          </p>
+        ) : (
+          <p className="rr-prose">
+            Está escrito originalmente en otro idioma y no he encontrado quién lo tradujo. No quiero inventarme un nombre: mira el
+            colofón antes de comprarlo, sobre todo si es un clásico con varias traducciones en circulación.
+          </p>
+        ))}
+      </aside>
     </div>
   );
 }
 
-function DetailSection({ title, children }) {
-  return (
-    <div className="rr-card" style={{ padding: "18px 20px", marginBottom: "14px" }}>
-      <div className="rr-label" style={{ marginBottom: "8px" }}>{title}</div>
-      {children}
-    </div>
-  );
-}
-
+// Cabecera compacta: la marca grande solo tiene sentido en la portada.
 function TopBar({ dismissedCount, onHome, onReset, onShowTrash, onRefresh, refreshing }) {
   return (
-    <div style={{ position: "sticky", top: 0, zIndex: 5, background: PALETTE.bg, borderBottom: "1px solid #EDE6D0" }}>
-      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "10px 40px", display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
-        <button className="rr-topbar-btn" onClick={onHome} title="Inicio">
-          <Home size={13} strokeWidth={1.6} /> <span className="rr-topbar-label">inicio</span>
+    <header className="rr-bar">
+      <div className="rr-bar-inner">
+        <button className="rr-bar-brand" onClick={onHome} aria-label="Volver a tus recomendaciones">
+          <BookMark size={34} />
+          <span className="rr-brand">Next Read <span style={{ color: PALETTE.terracottaDeep }}>Lab</span></span>
         </button>
-        <button className="rr-topbar-btn" onClick={onReset} title="Analizar otro CSV">
-          <RotateCcw size={13} strokeWidth={1.6} /> <span className="rr-topbar-label">analizar otro csv</span>
-        </button>
-        <button className="rr-topbar-btn" onClick={onShowTrash} title="Ver descartados">
-          <Trash2 size={13} strokeWidth={1.6} /> <span className="rr-topbar-label">descartados{dismissedCount > 0 ? ` (${dismissedCount})` : ""}</span>
-        </button>
-        <button className="rr-topbar-btn" onClick={onRefresh} disabled={refreshing} title="Actualizar resultados">
-          {refreshing ? <PulseDot /> : <RefreshCw size={13} strokeWidth={1.6} />}
-          <span className="rr-topbar-label">{refreshing ? "actualizando…" : "actualizar resultados"}</span>
-        </button>
+        <nav className="rr-bar-nav">
+          <button className="rr-topbar-btn" onClick={onRefresh} disabled={refreshing} title="Buscar otras recomendaciones">
+            {refreshing ? <PulseDot /> : <RefreshCw size={14} strokeWidth={1.6} />}
+            <span className="rr-topbar-label">{refreshing ? "buscando…" : "buscar otros"}</span>
+          </button>
+          <button className="rr-topbar-btn" onClick={onShowTrash} title="Ver descartados">
+            <Trash2 size={14} strokeWidth={1.6} />
+            <span className="rr-topbar-label">descartados</span>
+            {dismissedCount > 0 && <span className="rr-count">{dismissedCount}</span>}
+          </button>
+          <button className="rr-topbar-btn" onClick={onReset} title="Cambiar de biblioteca">
+            <RotateCcw size={14} strokeWidth={1.6} />
+            <span className="rr-topbar-label">otra biblioteca</span>
+          </button>
+        </nav>
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -1485,30 +1610,26 @@ function ConfirmModal({ title, message, confirmLabel, cancelLabel, onConfirm, on
 
 function TrashView({ recs, onRestore, onRestoreAll, onBack }) {
   return (
-    <div style={{ padding: "24px 0 60px" }}>
-      <button className="rr-link" onClick={onBack} style={{ marginBottom: "22px" }}>
-        ← volver a las recomendaciones
-      </button>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
-        <h2 className="rr-title" style={{ fontSize: "20px", margin: 0 }}>Descartados</h2>
-        {recs.length > 0 && <button className="rr-link" onClick={onRestoreAll}>restaurar todos</button>}
-      </div>
-      {recs.length === 0 ? (
-        <p style={{ fontSize: "14px", color: PALETTE.inkSoft }}>Nada por aquí todavía — cuando descartes alguna recomendación, aparecerá en este cajón.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+    <div className="rr-detail">
+      <button className="rr-link rr-back" onClick={onBack}>← todas las recomendaciones</button>
+      <h2 className="rr-hero-title" style={{ fontSize: "30px" }}>Lo que has apartado</h2>
+      <p className="rr-prose rr-soft" style={{ marginBottom: "22px" }}>
+        {recs.length === 0
+          ? "Aquí no hay nada todavía. Cuando descartes algo, lo guardo aquí por si cambias de idea."
+          : recs.length === 1
+          ? "Un libro que descartaste. Si cambias de idea, devuélvelo a la lista."
+          : `${recs.length} libros que descartaste. Si cambias de idea, devuélvelos a la lista.`}
+        {recs.length > 1 && <> <button className="rr-link" onClick={onRestoreAll}>devolverlos todos</button></>}
+      </p>
+      {recs.length > 0 && (
+        <ul className="rr-later">
           {recs.map((r) => (
-            <div key={r.id} className="rr-card" style={{ padding: "16px 18px", display: "flex", alignItems: "center", gap: "14px" }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="rr-title" style={{ fontSize: "15px" }}>{r.title}</div>
-                <div style={{ fontSize: "12px", color: PALETTE.inkSoft }}>{r.authors?.join(", ")}</div>
-              </div>
-              <button className="rr-btn" onClick={() => onRestore(r.id)} style={{ padding: "8px 16px", fontSize: "12px" }}>
-                restaurar
-              </button>
-            </div>
+            <li key={r.id} style={{ cursor: "default" }}>
+              <span className="rr-later-text"><strong className="rr-ink">{r.title}</strong>, de {r.authors?.[0] || "autor desconocido"}</span>
+              <button className="rr-link" style={{ fontSize: "13px", flexShrink: 0 }} onClick={() => onRestore(r.id)}>devolver a la lista</button>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -1556,13 +1677,10 @@ function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", acti
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Fraunces:opsz,wght,SOFT@9..144,900,100&family=DM+Sans:wght@400;500;700&display=swap');
       * { box-sizing: border-box; }
-      .rr-title { font-family: 'DM Sans', sans-serif; font-weight: 400; color: ${PALETTE.ink}; margin: 0; }
+      html, body { margin: 0; background: ${PALETTE.bg}; }
+      .rr-title { font-family: 'DM Sans', sans-serif; font-weight: 700; color: ${PALETTE.ink}; margin: 0; }
       .rr-brand { font-family: 'Fraunces', serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; color: ${PALETTE.ink}; margin: 0; }
-      .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
-      .rr-stat-inline { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
-      .rr-stat-big { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
       .rr-diamond {
         width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0;
         animation: rr-diamond-breathe 4s ease-in-out infinite;
@@ -1571,15 +1689,7 @@ function GlobalStyle() {
         0%, 100% { transform: rotate(45deg) scale(1); }
         50% { transform: rotate(45deg) scale(1.25); }
       }
-      @media (prefers-reduced-motion: reduce) {
-        .rr-diamond { animation: none; }
-      }
       .rr-card { background: ${PALETTE.white}; border: 1px solid #EDE6D0; border-radius: 18px; box-shadow: 0 4px 16px rgba(78,34,15,0.06); }
-      .rr-card-clickable { transition: transform 0.12s ease, box-shadow 0.12s ease; }
-      .rr-card-clickable:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(78,34,15,0.09); }
-      .rr-cover { outline: 2px solid transparent; outline-offset: 2px; transition: outline-color 0.15s ease; }
-      .rr-card-clickable:hover .rr-cover { outline-color: ${PALETTE.terracotta}; }
-      .rr-pill { font-size: 11px; color: ${PALETTE.ink}; background: ${PALETTE.sageWash}; border-radius: 999px; padding: 3px 11px; }
       .rr-chip {
         font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; color: ${PALETTE.ink};
         border: 1.5px solid ${PALETTE.sage}; border-radius: 999px; padding: 7px 16px; cursor: pointer;
@@ -1587,30 +1697,11 @@ function GlobalStyle() {
       }
       .rr-chip:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(78,34,15,0.12); }
       .rr-chip:active { transform: translateY(0); box-shadow: inset 0 1px 3px rgba(78,34,15,0.18); }
-      .rr-colophon {
-        text-align: center;
-        padding: 34px 20px 50px;
-        font-family: 'DM Sans', sans-serif;
-        font-weight: 400;
-        font-size: 11px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: ${PALETTE.ink};
-      }
-      .rr-colophon-dot {
-        display: inline-block;
-        width: 5px; height: 5px;
-        background: ${PALETTE.sage};
-        transform: rotate(45deg);
-        margin: 0 10px;
-        vertical-align: middle;
-      }      
       .rr-select {
         font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
         border-radius: 999px; padding: 5px 26px 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
         appearance: none; -webkit-appearance: none; -moz-appearance: none;
       }
-      .rr-select-wrap { position: relative; display: inline-flex; align-items: center; }
       .rr-dropdown { position: relative; display: inline-flex; }
       .rr-select-btn {
         font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
@@ -1628,15 +1719,13 @@ function GlobalStyle() {
         font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
       }
       .rr-dropdown-option:hover { background: ${PALETTE.sageWash}; }
-      .rr-select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: ${PALETTE.terracotta}; }
       .rr-btn {
         display: inline-flex; align-items: center; gap: 8px;
         font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px;
         border: none; border-radius: 999px; padding: 12px 26px;
         cursor: pointer; background: ${PALETTE.sageWash}; color: ${PALETTE.ink};
-        transition: transform 0.12s ease;
+        transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
-      .rr-btn { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .rr-btn:hover { transform: translateY(-1px); }
       .rr-btn:active { transform: scale(0.97); }
       .rr-btn-filled { background: ${PALETTE.terracottaDeep}; color: ${PALETTE.white}; }
@@ -1676,7 +1765,6 @@ function GlobalStyle() {
         position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
       }
-      @keyframes spin { to { transform: rotate(360deg); } }
       .rr-arc { animation: rr-pulse-arc 1.6s ease-in-out infinite; }
       .rr-arc-2 { animation-delay: 0.18s; }
       .rr-arc-3 { animation-delay: 0.36s; }
@@ -1716,8 +1804,109 @@ function GlobalStyle() {
       }
       .rr-screen { animation: rr-fade-in 0.22s ease both; }
       @media (prefers-reduced-motion: reduce) {
-        .rr-screen { animation: none; }
+        .rr-diamond, .rr-screen, .rr-arc, .rr-pulse-dot { animation: none; }
       }
+
+      /* ---- Cabecera compacta y pie ---- */
+      .rr-bar { position: sticky; top: 0; z-index: 5; background: ${PALETTE.bg}; border-bottom: 1px solid #EDE6D0; padding-top: env(safe-area-inset-top); }
+      .rr-bar-inner { max-width: 760px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+      .rr-bar-brand { display: flex; align-items: center; gap: 10px; background: none; border: none; padding: 0; cursor: pointer; }
+      .rr-bar-brand svg { margin: 0 !important; }
+      .rr-bar-brand .rr-brand { font-size: 19px; white-space: nowrap; }
+      .rr-bar-nav { display: flex; gap: 2px; }
+      .rr-count { background: ${PALETTE.terracottaDeep}; color: ${PALETTE.white}; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+      .rr-footer { text-align: center; font-size: 13px; color: ${PALETTE.inkSoft}; padding: 40px 20px calc(40px + env(safe-area-inset-bottom)); }
+      .rr-footer a { color: ${PALETTE.ink}; text-decoration-color: ${PALETTE.terracotta}; text-underline-offset: 3px; }
+
+      /* ---- Portada y construcción ---- */
+      .rr-pick { max-width: 560px; margin: 0 auto; }
+      .rr-pitch { text-align: center; font-size: 22px; line-height: 1.35; margin: 0 0 30px; }
+      .rr-drop { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; padding: 38px 28px; border-radius: 28px; background: ${PALETTE.sageWash}; cursor: pointer; transition: background 0.15s ease, transform 0.15s ease; }
+      .rr-drop[data-dragging] { background: #D6DCC6; transform: scale(1.01); }
+      .rr-drop:focus-within { outline: 2px solid ${PALETTE.terracotta}; outline-offset: 3px; }
+      .rr-drop-title { font-size: 19px; font-weight: 700; margin: 0; }
+      .rr-drop-sub { font-size: 14px; color: ${PALETTE.inkSoft}; margin: 4px 0 20px; line-height: 1.5; max-width: 30em; }
+      .rr-help-toggle { margin: 14px auto 0; display: flex; }
+      .rr-help { font-size: 14px; line-height: 1.6; color: ${PALETTE.inkSoft}; text-align: center; margin: 10px auto 0; max-width: 32em; }
+      .rr-alt { margin-top: 40px; padding-top: 26px; border-top: 1px solid #E5DCC4; }
+      .rr-alt p { font-size: 14px; line-height: 1.6; color: ${PALETTE.inkSoft}; margin: 0 0 14px; overflow-wrap: anywhere; }
+      .rr-alt-row { display: flex; gap: 10px; }
+      .rr-alt-row .rr-select { flex: 1; min-width: 0; padding: 10px 16px; }
+      .rr-error { color: ${PALETTE.terracottaDeep} !important; margin-top: 10px !important; }
+      .rr-confirm { text-align: center; padding: 36px 30px 32px; border-radius: 28px; background: ${PALETTE.sageWash}; }
+      .rr-confirm-lead { font-size: 21px; font-weight: 700; line-height: 1.35; margin: 0 0 10px; }
+      .rr-confirm-sub { font-size: 15px; line-height: 1.6; color: ${PALETTE.inkSoft}; margin: 0 auto 8px; max-width: 30em; }
+      .rr-confirm-sub cite { font-style: normal; font-weight: 700; color: ${PALETTE.ink}; }
+      .rr-confirm .rr-actions { margin-top: 22px; }
+      .rr-confirm-file { font-size: 13px; color: ${PALETTE.inkSoft}; text-align: center; margin: 16px 0 0; overflow-wrap: anywhere; }
+      .rr-building { text-align: center; padding-bottom: 20px; }
+      .rr-steps { list-style: none; padding: 0; margin: 10px auto 0; display: inline-flex; flex-direction: column; gap: 12px; text-align: left; font-size: 16px; }
+      .rr-steps li { display: flex; align-items: center; gap: 12px; }
+      .rr-steps li[data-state="next"] { color: ${PALETTE.inkSoft}; opacity: 0.6; }
+      .rr-steps li[data-state="now"] { font-weight: 700; }
+      .rr-step-mark { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid ${PALETTE.sage}; display: inline-flex; align-items: center; justify-content: center; color: ${PALETTE.white}; flex-shrink: 0; }
+      .rr-steps li[data-state="done"] .rr-step-mark { background: ${PALETTE.sage}; }
+      .rr-steps li[data-state="now"] .rr-step-mark { border: 2px solid ${PALETTE.terracottaDeep}; }
+      .rr-building-note { font-size: 13px; color: ${PALETTE.inkSoft}; max-width: 26em; margin: 30px auto 0; line-height: 1.6; }
+
+      /* ---- Perfil: la balda con tus autores y la nota ---- */
+      .rr-em { font-weight: 700; color: ${PALETTE.terracottaDeep}; }
+      .rr-profile { display: grid; grid-template-columns: auto 1fr; gap: 36px; align-items: end; margin: 34px 0 30px; }
+      .rr-shelf { display: inline-block; }
+      .rr-spines { display: flex; align-items: flex-end; gap: 3px; padding: 0 14px; }
+      .rr-spine { border-radius: 3px 3px 1px 1px; display: flex; align-items: center; justify-content: center; transform-origin: bottom left;
+        box-shadow: inset -4px 0 0 rgba(0,0,0,0.08), inset 0 10px 0 rgba(255,255,255,0.06); }
+      .rr-spine span { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 88%; }
+      .rr-board { height: 10px; border-radius: 3px; background: ${PALETTE.terracotta}; box-shadow: 0 6px 12px -6px rgba(78,34,15,0.5); }
+      .rr-note { font-size: 17px; line-height: 1.6; margin: 0; padding-left: 20px; border-left: 3px solid ${PALETTE.sage}; }
+      .rr-avoided { font-size: 13px; color: ${PALETTE.inkSoft}; margin: -8px 0 18px; }
+
+      /* ---- Recomendaciones en tres niveles ---- */
+      .rr-book-cover { flex-shrink: 0; border-radius: 3px 8px 8px 3px; background: ${PALETTE.sageWash}; overflow: hidden; display: flex; align-items: center; justify-content: center;
+        box-shadow: inset 3px 0 0 rgba(0,0,0,0.12), 0 1px 2px rgba(78,34,15,0.18), 0 8px 18px -8px rgba(78,34,15,0.35); }
+      .rr-book-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .rr-hero { display: grid; grid-template-columns: auto 1fr; gap: 32px; align-items: end; background: ${PALETTE.sageWash}; border-radius: 32px; padding: 36px 34px 40px; margin: 6px 0 46px; }
+      .rr-hero-stand { display: flex; flex-direction: column; align-items: center; }
+      .rr-hero-stand .rr-board { width: calc(100% + 36px); }
+      .rr-hero-text { display: flex; flex-direction: column; justify-content: flex-end; min-width: 0; padding-bottom: 10px; }
+      .rr-kicker { font-size: 14px; font-weight: 700; color: ${PALETTE.terracottaDeep}; margin: 0 0 8px; }
+      .rr-hero-title { font-size: 36px; line-height: 1.08; font-weight: 700; margin: 0; letter-spacing: -0.01em; color: ${PALETTE.ink}; }
+      .rr-byline { font-size: 17px; color: ${PALETTE.inkSoft}; margin: 8px 0 0; }
+      .rr-hero-why { font-size: 17px; line-height: 1.6; margin: 16px 0 0; max-width: 30em; }
+      .rr-actions { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; margin-top: 20px; }
+      .rr-link-quiet { text-decoration-color: transparent; color: ${PALETTE.inkSoft}; }
+      .rr-link-quiet:hover { text-decoration-color: ${PALETTE.terracotta}; }
+      .rr-ask { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; margin-top: 12px; }
+      .rr-ask > span { margin-right: 4px; }
+      .rr-ask .rr-chip { background: ${PALETTE.white}; }
+      .rr-section-title { font-size: 20px; font-weight: 700; margin: 0 0 14px; }
+      .rr-next-up { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-bottom: 46px; }
+      .rr-next { display: flex; flex-direction: column; gap: 14px; cursor: pointer; }
+      .rr-book-title { font: inherit; font-weight: 700; color: ${PALETTE.ink}; background: none; border: none; padding: 0; margin: 0; text-align: left; cursor: pointer;
+        text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: text-decoration-color 0.15s ease; }
+      .rr-next:hover .rr-book-title, .rr-later li:hover .rr-book-title, .rr-book-title:focus-visible { text-decoration-color: ${PALETTE.terracotta}; }
+      .rr-next .rr-book-title { font-size: 17px; line-height: 1.25; }
+      .rr-byline-small { font-size: 15px; color: ${PALETTE.inkSoft}; }
+      .rr-next-why { font-size: 14px; color: ${PALETTE.inkSoft}; line-height: 1.5; margin: 6px 0 4px; }
+      .rr-icon-actions { display: flex; gap: 2px; flex-shrink: 0; margin-left: -6px; }
+      .rr-later { list-style: none; margin: 0; padding: 0; border-top: 1px solid #EDE6D0; }
+      .rr-later li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #EDE6D0; cursor: pointer; font-size: 16px; }
+      .rr-later .rr-icon-actions { margin-left: 0; }
+      .rr-later-text { color: ${PALETTE.inkSoft}; min-width: 0; }
+      .rr-later-why { display: block; font-size: 14px; line-height: 1.45; margin-top: 2px; }
+      .rr-ink { color: ${PALETTE.ink}; }
+      .rr-empty { font-size: 15px; color: ${PALETTE.inkSoft}; padding: 24px 0; }
+
+      /* ---- Ficha y descartados ---- */
+      .rr-detail { padding: 28px 0 60px; }
+      .rr-back { margin-bottom: 26px; }
+      .rr-detail-head { display: flex; gap: 28px; align-items: center; }
+      .rr-facts { font-size: 14px; color: ${PALETTE.inkSoft}; margin: 6px 0 0; }
+      .rr-why { margin: 34px 0 6px; padding: 4px 0 4px 22px; border-left: 3px solid ${PALETTE.terracotta}; font-size: 20px; line-height: 1.55; max-width: 32em; }
+      .rr-detail-title { font-size: 17px; font-weight: 700; margin: 34px 0 8px; }
+      .rr-prose { font-size: 16px; line-height: 1.7; margin: 0 0 12px; max-width: 38em; }
+      .rr-soft { color: ${PALETTE.inkSoft}; }
+      .rr-buy { background: ${PALETTE.sageWash}; border-radius: 22px; padding: 22px 26px 12px; margin-top: 34px; }
 
       /* ---- Responsive / iPhone como app instalada ---- */
       .rr-header {
@@ -1735,6 +1924,26 @@ function GlobalStyle() {
         .rr-icon-btn { width: 40px; height: 40px; }
         .rr-btn { padding: 13px 22px; }
         .rr-chip { padding: 9px 14px; }
+        .rr-bar-inner { padding: 8px 12px; }
+        .rr-bar-brand .rr-brand { font-size: 16px; }
+        .rr-bar-brand svg { width: 28px; }
+        .rr-pitch { font-size: 20px; }
+        .rr-profile { grid-template-columns: 1fr; gap: 24px; margin-top: 22px; }
+        .rr-profile .rr-shelf { order: 2; justify-self: start; }
+        .rr-note { font-size: 16px; }
+        /* En móvil, la portada va junto al título y la razón ocupa todo el ancho */
+        .rr-hero { padding: 24px 20px 26px; gap: 0 20px; align-items: end; }
+        .rr-hero .rr-book-cover { width: 96px !important; height: 144px !important; }
+        .rr-hero-stand .rr-board { width: calc(100% + 16px); height: 7px; }
+        .rr-hero-text { display: contents; }
+        .rr-hero-head { align-self: end; }
+        .rr-hero-body { grid-column: 1 / -1; }
+        .rr-hero-title { font-size: 24px; }
+        .rr-next-up { grid-template-columns: 1fr; gap: 20px; }
+        .rr-next { flex-direction: row; }
+        .rr-next .rr-book-cover { width: 72px !important; height: 108px !important; }
+        .rr-detail-head { flex-direction: column; align-items: flex-start; gap: 20px; }
+        .rr-why { font-size: 18px; }
       }
       /* Evita el zoom automático de iOS al enfocar un <select> (exige 16px mínimo) */
       .rr-select { font-size: 16px; }
