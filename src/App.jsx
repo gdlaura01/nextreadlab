@@ -69,44 +69,77 @@ function parseGoodreadsRssXml(xmlText, shelf) {
 // sigue funcionando con los proxies públicos de abajo como única vía.
 const OWN_PROXY_URL = import.meta.env.VITE_GOODREADS_PROXY_URL || "";
 
+// Cada intento fallido queda anotado ({ via, kind, status }) para que
+// connectGoodreadsAccount pueda explicar al usuario qué ha pasado.
+class ShelfFetchError extends Error {
+  constructor(message, attempts) {
+    super(message);
+    this.attempts = attempts;
+  }
+}
+
+let warnedMissingOwnProxy = false;
+
 async function fetchGoodreadsShelf(userId, shelf) {
   const goodreadsUrl = `https://www.goodreads.com/review/list_rss/${userId}?shelf=${shelf}`;
+  const attempts = [];
 
   if (OWN_PROXY_URL) {
+    const ownUrl = `${OWN_PROXY_URL}?userId=${encodeURIComponent(userId)}&shelf=${encodeURIComponent(shelf)}`;
+    // Los fallos de tu proxy se avisan en la consola: un 200 con algo que no
+    // es RSS no deja ningún otro rastro y el flujo pasaría a los públicos sin más.
     try {
-      const r = await fetch(`${OWN_PROXY_URL}?userId=${encodeURIComponent(userId)}&shelf=${encodeURIComponent(shelf)}`);
+      const r = await fetch(ownUrl);
       if (r.ok) {
         const xmlText = await r.text();
         const rows = parseGoodreadsRssXml(xmlText, shelf);
         if (rows !== null) return rows;
+        attempts.push({ via: "own", kind: "format" });
+        console.warn(`[Goodreads] Tu proxy respondió ${r.status}, pero no con el RSS de Goodreads (${ownUrl}). La respuesta empieza así:`, xmlText.slice(0, 300));
+      } else {
+        attempts.push({ via: "own", kind: "http", status: r.status });
+        console.warn(`[Goodreads] Tu proxy respondió con un error ${r.status} (${ownUrl}).`);
       }
-    } catch {
-      // si tu propio proxy falla puntualmente, seguimos con los públicos de abajo
+    } catch (e) {
+      attempts.push({ via: "own", kind: "network" });
+      console.warn(`[Goodreads] No se pudo contactar con tu proxy (${ownUrl}): ${e.message}`);
     }
+  } else if (!warnedMissingOwnProxy) {
+    warnedMissingOwnProxy = true;
+    console.warn("[Goodreads] Este build no tiene VITE_GOODREADS_PROXY_URL: solo se usan los proxies públicos.");
   }
 
-  let lastError = new Error("No se pudo leer esa estantería.");
   for (const buildProxyUrl of CORS_PROXIES) {
+    const url = buildProxyUrl(goodreadsUrl);
     try {
-      const r = await fetch(buildProxyUrl(goodreadsUrl));
+      const r = await fetch(url);
       if (!r.ok) {
-        lastError = new Error(`El servicio intermediario respondió con un error (${r.status}).`);
+        attempts.push({ via: new URL(url).host, kind: "http", status: r.status });
         continue;
       }
       const xmlText = await r.text();
       const rows = parseGoodreadsRssXml(xmlText, shelf);
       if (rows === null) {
-        lastError = new Error("La respuesta no tenía el formato esperado.");
+        attempts.push({ via: new URL(url).host, kind: "format" });
         continue;
       }
       return rows;
-    } catch (e) {
-      lastError = e;
+    } catch {
+      attempts.push({ via: new URL(url).host, kind: "network" });
       // seguimos con el siguiente proxy de la lista
     }
   }
-  throw lastError;
+  throw new ShelfFetchError(`No se pudo leer la estantería "${shelf}".`, attempts);
 }
+
+// Un fallo es "del servicio" cuando no hubo respuesta o el intermediario
+// respondió con un error suyo (5xx, 429 por exceso de peticiones, los 52x de
+// Cloudflare). Un 404 o una respuesta que no es RSS pueden venir de Goodreads
+// (número de usuario mal escrito, perfil privado), así que no los contamos.
+function isServiceFailure(attempt) {
+  return attempt.kind === "network" || (attempt.kind === "http" && (attempt.status >= 500 || attempt.status === 429));
+}
+
 // Conecta con la cuenta de Goodreads directamente desde el navegador: sin
 // terminal, sin instalar nada. Lanza un error legible si algo falla, para
 // mostrarlo tal cual al usuario.
@@ -116,19 +149,25 @@ async function connectGoodreadsAccount(userId) {
     throw new Error("Ese no parece un ID de Goodreads válido. Debe ser solo números (lo encuentras en la URL de tu perfil).");
   }
   const results = [];
+  const failures = [];
   let anySucceeded = false;
   for (const shelf of GOODREADS_SHELVES) {
     try {
       const rows = await fetchGoodreadsShelf(cleanId, shelf);
       results.push(...rows);
       anySucceeded = true;
-    } catch {
+    } catch (e) {
+      failures.push(e);
       // seguimos con las demás estanterías aunque una falle
     }
     await sleep(300);
   }
   if (!anySucceeded) {
-    throw new Error("No he podido conectar con esa cuenta. Comprueba que el ID es correcto y que tu perfil de Goodreads es público (Configuración → Perfil).");
+    const attempts = failures.flatMap((e) => e.attempts || []);
+    if (attempts.length && attempts.every(isServiceFailure)) {
+      throw new Error("Ahora mismo no consigo llegar a Goodreads: los servicios que uso para leer tu perfil no responden. No es un problema de tu cuenta. Prueba de nuevo en un rato o, mientras tanto, sube el CSV de tu biblioteca, que no depende de ellos.");
+    }
+    throw new Error("No he podido leer tu Goodreads. Comprueba que el número de usuario es correcto y que tu perfil es público (Settings → Profile). Si todo está bien, puede que el servicio que uso para leerlo esté fallando: prueba más tarde o sube el CSV de tu biblioteca.");
   }
   if (!results.length) {
     throw new Error("Me he conectado, pero no he encontrado ningún libro en tus estanterías. Comprueba que tienes libros marcados como leídos en Goodreads.");
@@ -447,6 +486,68 @@ function reasonFor(r, profile, { long = false } = {}) {
       : "Encaja con el tono general de tu biblioteca.");
   }
   return parts.join(" ");
+}
+
+// Google Books devuelve la sinopsis a veces con HTML (<br>, <p>, <b>…) o con
+// saltos de línea crudos. Cada salto que ya trae el texto marca un párrafo;
+// el resto de etiquetas se quitan y las entidades (&amp;, &quot;…) se
+// decodifican. No se corta ni se reescribe nada del contenido.
+function synopsisParagraphs(raw) {
+  if (!raw) return [];
+  const marked = raw.replace(/<br\s*\/?>|<\/p>|<\/div>/gi, "\n");
+  const text = new DOMParser().parseFromString(marked, "text/html").body.textContent || "";
+  return text
+    .split(/\n+/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+}
+
+const SYNOPSIS_PREVIEW_CHARS = 450;
+
+// Primeros párrafos hasta ~450 caracteres. Si el primero ya es más largo, se
+// corta al final de una frase (o de una palabra) y se marca con "…".
+function synopsisPreview(paragraphs) {
+  const preview = [];
+  let used = 0;
+  for (const p of paragraphs) {
+    if (used + p.length <= SYNOPSIS_PREVIEW_CHARS) {
+      preview.push(p);
+      used += p.length;
+      continue;
+    }
+    if (!preview.length) {
+      const slice = p.slice(0, SYNOPSIS_PREVIEW_CHARS);
+      const sentenceEnd = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf("? "), slice.lastIndexOf("! "));
+      preview.push(sentenceEnd > 200 ? slice.slice(0, sentenceEnd + 1) : `${slice.slice(0, slice.lastIndexOf(" "))}…`);
+    }
+    break;
+  }
+  return preview;
+}
+
+function Synopsis({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  const paragraphs = useMemo(() => synopsisParagraphs(text), [text]);
+  if (!paragraphs.length) return <p className="rr-prose">Google Books no tiene sinopsis para esta edición.</p>;
+
+  const total = paragraphs.reduce((n, p) => n + p.length, 0);
+  const preview = synopsisPreview(paragraphs);
+  const previewLength = preview.reduce((n, p) => n + p.replace(/…$/, "").length, 0);
+  // Si lo que quedaría oculto es poco, se enseña todo: un "leer más" para dos líneas no compensa.
+  const collapsible = total > SYNOPSIS_PREVIEW_CHARS && total - previewLength > 120;
+  const shown = collapsible && !expanded ? preview : paragraphs;
+
+  return (
+    <div className="rr-synopsis" id="rr-synopsis">
+      {shown.map((p, i) => <p key={i} className="rr-prose">{p}</p>)}
+      {collapsible && (
+        <button className="rr-link" onClick={() => setExpanded((e) => !e)} aria-expanded={expanded} aria-controls="rr-synopsis">
+          {expanded ? "leer menos" : "leer más"}
+          <ChevronDown size={12} strokeWidth={1.6} style={{ transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s ease" }} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 function loadJSON(key) {
@@ -1529,7 +1630,7 @@ function BookDetailScreen({ book, profile, onBack, isSaved, onToggleSaved, headi
       <blockquote className="rr-why">{reasonFor(book, profile, { long: true })}</blockquote>
 
       <h3 className="rr-detail-title">De qué va</h3>
-      <p className="rr-prose">{book.description || "Google Books no tiene sinopsis para esta edición."}</p>
+      <Synopsis text={book.description} />
 
       <aside className="rr-buy">
         <h3 className="rr-detail-title" style={{ marginTop: 0 }}>Si vas a comprarlo</h3>
@@ -1906,6 +2007,7 @@ function GlobalStyle() {
       .rr-detail-title { font-size: 17px; font-weight: 700; margin: 34px 0 8px; }
       .rr-prose { font-size: 16px; line-height: 1.7; margin: 0 0 12px; max-width: 38em; }
       .rr-soft { color: ${PALETTE.inkSoft}; }
+      .rr-synopsis > .rr-link { margin-top: 2px; }
       .rr-buy { background: ${PALETTE.sageWash}; border-radius: 22px; padding: 22px 26px 12px; margin-top: 34px; }
 
       /* ---- Responsive / iPhone como app instalada ---- */
