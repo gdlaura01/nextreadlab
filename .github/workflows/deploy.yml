@@ -19,10 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar el código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -38,7 +38,7 @@ jobs:
           VITE_GOODREADS_PROXY_URL: ${{ secrets.VITE_GOODREADS_PROXY_URL }}
 
       - name: Preparar el resultado para Pages
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./dist
 
@@ -51,4 +51,4 @@ jobs:
     steps:
       - name: Publicar en GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
