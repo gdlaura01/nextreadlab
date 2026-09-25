@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "sync": "node scripts/sync-goodreads.js"
+    "sync": "node scripts/sync-goodreads.js",
+    "icons": "node scripts/icons/generate-icons.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.383.0",
@@ -17,6 +18,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
+    "playwright-core": "^1.56.1",
     "vite": "^6.4.3",
     "xml2js": "^0.6.2"
   }
