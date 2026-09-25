@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Papa from "papaparse";
 import {
-  BookOpen, Upload, Loader2, Star, X, ChevronDown, Check, RotateCcw,
+  BookOpen, Upload, Star, X, ChevronDown, Check, RotateCcw,
   FileText, Bookmark, BookmarkCheck, ExternalLink, Home, Trash2, RefreshCw,
 } from "lucide-react";
 
@@ -1042,7 +1042,7 @@ function ConfirmPane({ file, onConfirm, onCancel }) {
           <FileText size={19} color={PALETTE.ink} strokeWidth={1.3} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "14px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
+          <div style={{ fontSize: "14px", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</div>
           <div style={{ fontSize: "12px", color: PALETTE.inkSoft }}>{sizeKb} KB</div>
         </div>
       </div>
@@ -1556,13 +1556,12 @@ function UndoBar({ onUndo, onClose, message = "Recomendación descartada.", acti
 function GlobalStyle() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Fraunces:opsz,wght,SOFT@9..144,900,100&family=DM+Sans:wght@400;500;700&display=swap');
       * { box-sizing: border-box; }
-      .rr-title { font-family: 'DM Sans', sans-serif; font-weight: 400; color: ${PALETTE.ink}; margin: 0; }
+      .rr-title { font-family: 'DM Sans', sans-serif; font-weight: 700; color: ${PALETTE.ink}; margin: 0; }
       .rr-brand { font-family: 'Fraunces', serif; font-weight: 900; text-transform: uppercase; letter-spacing: 0.02em; color: ${PALETTE.ink}; margin: 0; }
       .rr-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: ${PALETTE.inkSoft}; }
-      .rr-stat-inline { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
-      .rr-stat-big { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
+      .rr-stat-inline { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 15px; color: ${PALETTE.terracottaDeep}; }
+      .rr-stat-big { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 26px; color: ${PALETTE.terracottaDeep}; line-height: 1; }
       .rr-diamond {
         width: 6px; height: 6px; background: ${PALETTE.sage}; transform: rotate(45deg); margin: 14px auto 0;
         animation: rr-diamond-breathe 4s ease-in-out infinite;
@@ -1570,9 +1569,6 @@ function GlobalStyle() {
       @keyframes rr-diamond-breathe {
         0%, 100% { transform: rotate(45deg) scale(1); }
         50% { transform: rotate(45deg) scale(1.25); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .rr-diamond { animation: none; }
       }
       .rr-card { background: ${PALETTE.white}; border: 1px solid #EDE6D0; border-radius: 18px; box-shadow: 0 4px 16px rgba(78,34,15,0.06); }
       .rr-card-clickable { transition: transform 0.12s ease, box-shadow 0.12s ease; }
@@ -1610,7 +1606,6 @@ function GlobalStyle() {
         border-radius: 999px; padding: 5px 26px 5px 12px; background: ${PALETTE.white}; color: ${PALETTE.ink}; cursor: pointer;
         appearance: none; -webkit-appearance: none; -moz-appearance: none;
       }
-      .rr-select-wrap { position: relative; display: inline-flex; align-items: center; }
       .rr-dropdown { position: relative; display: inline-flex; }
       .rr-select-btn {
         font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 12px; border: 1.5px solid ${PALETTE.sage};
@@ -1628,15 +1623,13 @@ function GlobalStyle() {
         font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px; color: ${PALETTE.ink}; cursor: pointer;
       }
       .rr-dropdown-option:hover { background: ${PALETTE.sageWash}; }
-      .rr-select-arrow { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: ${PALETTE.terracotta}; }
       .rr-btn {
         display: inline-flex; align-items: center; gap: 8px;
         font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 13px;
         border: none; border-radius: 999px; padding: 12px 26px;
         cursor: pointer; background: ${PALETTE.sageWash}; color: ${PALETTE.ink};
-        transition: transform 0.12s ease;
+        transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
-      .rr-btn { transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1); }
       .rr-btn:hover { transform: translateY(-1px); }
       .rr-btn:active { transform: scale(0.97); }
       .rr-btn-filled { background: ${PALETTE.terracottaDeep}; color: ${PALETTE.white}; }
@@ -1676,7 +1669,6 @@ function GlobalStyle() {
         position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
         overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
       }
-      @keyframes spin { to { transform: rotate(360deg); } }
       .rr-arc { animation: rr-pulse-arc 1.6s ease-in-out infinite; }
       .rr-arc-2 { animation-delay: 0.18s; }
       .rr-arc-3 { animation-delay: 0.36s; }
@@ -1716,7 +1708,7 @@ function GlobalStyle() {
       }
       .rr-screen { animation: rr-fade-in 0.22s ease both; }
       @media (prefers-reduced-motion: reduce) {
-        .rr-screen { animation: none; }
+        .rr-diamond, .rr-screen, .rr-arc, .rr-pulse-dot { animation: none; }
       }
 
       /* ---- Responsive / iPhone como app instalada ---- */
