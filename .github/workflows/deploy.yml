@@ -26,9 +26,11 @@ jobs:
         with:
           node-version: 22
 
+      # npm ci instala exactamente lo que fija package-lock.json, así cada
+      # despliegue usa las mismas versiones que se han probado en local
       - name: Instalar dependencias
-        run: npm install
-        
+        run: npm ci
+
       - name: Compilar
         run: npm run build
         env:
