@@ -181,9 +181,19 @@ Esto genera una carpeta `dist/` con los archivos estáticos.
 
 ## Regenerar los iconos
 
-Los iconos de `public/` (`favicon.ico`, `app-icon.ico`, `apple-touch-icon.png`,
-`icon-192.png` e `icon-512.png`) son el logo del libro dentro de un círculo del
-color de fondo de la marca, con las esquinas transparentes. Si cambias el logo
+Los iconos de `public/` salen todos del logo del libro, con tres formas:
+
+- **Redondos con las esquinas transparentes** (`favicon.ico`, `app-icon.ico`,
+  `icon-192.png`, `icon-512.png`): la pestaña del navegador, los accesos
+  directos y los iconos normales de la PWA.
+- **Cuadrado opaco para iOS** (`apple-touch-icon.png`): iOS recorta su propio
+  cuadrado redondeado y rellena de negro lo que sea transparente, así que este
+  tiene que ser opaco.
+- **Maskable para Android** (`icon-maskable-192.png`, `icon-maskable-512.png`):
+  cuadrados opacos con el logo dentro de la zona segura (el círculo central del
+  80 %), porque cada lanzador los recorta con su propia forma.
+
+Si cambias el logo
 (el componente `BookMark` de `src/App.jsx`) o los colores de `PALETTE`,
 vuelve a generarlos con:
 
@@ -198,10 +208,11 @@ Edge y termina los archivos con Python. Necesitas:
   variable `CHROMIUM_PATH`.
 - **Python 3 con Pillow**: `pip install pillow`.
 
-Al terminar, comprueba cada archivo (y cada tamaño de los `.ico`): tiene que
-estar en RGBA, con las cuatro esquinas transparentes y el centro opaco. Si
-alguno no cumple, el script termina con error. Los tamaños de cada icono están
-en `scripts/icons/icons.json`.
+Al terminar, comprueba cada archivo (y cada tamaño de los `.ico`) según su
+forma: los redondos, en RGBA con las cuatro esquinas transparentes y el centro
+opaco; los opacos, sin ningún píxel transparente; y los maskable, además, con
+todo el logo dentro de la zona segura. Si alguno no cumple, el script termina
+con error. Los archivos, tamaños y formas están en `scripts/icons/icons.json`.
 
 ## Publicar en GitHub Pages (enlace en vivo)
 
