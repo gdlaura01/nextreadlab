@@ -4,6 +4,14 @@
     "full": "Cuadrado opaco del color de fondo con el logo al mismo tamaño que el redondo. Para iOS, que recorta su propio cuadrado redondeado y rellena de negro lo transparente.",
     "maskable": "Cuadrado opaco del color de fondo con el logo más pequeño, dentro de la zona segura (círculo central del 80%). Para Android, que recorta con la forma de cada lanzador."
   },
+  "optical": {
+    "description": "Ajuste óptico de los iconos redondos diminutos, donde el trazo normal del logo se pierde: scale es el tamaño del libro en el círculo (0.9 por defecto), stroke multiplica el grosor de los trazos, arcs dice qué arcos se dibujan (1 el de arriba, terracota oscuro; 3 el de abajo, salvia) y dot si va el punto de encima.",
+    "sizes": {
+      "16": { "scale": 1.05, "stroke": 2.4, "arcs": [1], "dot": false },
+      "32": { "scale": 1.0, "stroke": 2.2 },
+      "48": { "scale": 1.0, "stroke": 2.2 }
+    }
+  },
   "png": [
     { "file": "apple-touch-icon.png", "size": 180, "shape": "full" },
     { "file": "icon-192.png", "size": 192, "shape": "round" },

@@ -5,7 +5,8 @@ Uso (lo llama generate-icons.mjs):
 
 Todos los archivos quedan en RGBA y nunca se aplanan sobre un fondo. Al final se
 comprueba cada archivo (y cada tamaño de los .ico) según su forma:
-- round: alpha 0 en las cuatro esquinas y alpha 255 en el centro.
+- round: alpha 0 en las cuatro esquinas, alpha 255 en el centro y nada visible
+  (alpha >= 16) a más de 1 px fuera del círculo.
 - full: opaco entero (alpha 255 en todos los píxeles) y esquinas del color de fondo.
 - maskable: como full y, además, todo el logo dentro de la zona segura (el
   círculo central del 80%, radio 0,4 del lado), que es lo que Android garantiza
@@ -38,6 +39,11 @@ def final(renders, shape, size):
     return raw.convert("RGBa").resize((size, size), Image.LANCZOS).convert("RGBA")
 
 
+def pixels_of(img):
+    # get_flattened_data sustituye a getdata desde Pillow 12; usamos la que haya
+    return img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
+
+
 def corners_of(w, h):
     return [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]
 
@@ -47,9 +53,18 @@ def check_round(img):
     a = img.getchannel("A")
     corner_alpha = [a.getpixel(xy) for xy in corners_of(w, h)]
     center = (w // 2, h // 2)
-    ok = all(v == 0 for v in corner_alpha) and a.getpixel(center) == 255
+    # Nada visible fuera del círculo: si el logo se saliera (por ejemplo, con el
+    # ajuste óptico de los tamaños diminutos), aparecería sobre la parte transparente.
+    # La reducción LANCZOS deja un halo casi invisible (alpha < 16) hasta ~2,5 px
+    # fuera del borde; eso no cuenta. Lo visible no pasa de medio píxel.
+    cx, cy, radius = (w - 1) / 2, (h - 1) / 2, w / 2
+    outside = sum(
+        1 for i, alpha in enumerate(pixels_of(a))
+        if alpha >= 16 and math.hypot(i % w - cx, i // w - cy) > radius + 1
+    )
+    ok = all(v == 0 for v in corner_alpha) and a.getpixel(center) == 255 and outside == 0
     detail = "  ".join(f"alpha{xy}={v}" for xy, v in zip(corners_of(w, h), corner_alpha))
-    return ok, f"{detail}  alpha centro{center}={a.getpixel(center)}"
+    return ok, f"{detail}  alpha centro{center}={a.getpixel(center)}  píxeles fuera del círculo={outside}"
 
 
 def check_opaque(img, bg):
@@ -67,9 +82,7 @@ def check_safe_zone(img, bg):
     w, h = img.size
     cx, cy = (w - 1) / 2, (h - 1) / 2
     farthest = 0.0
-    # get_flattened_data sustituye a getdata desde Pillow 12; usamos la que haya
-    pixels = img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
-    for i, (r, g, b, _) in enumerate(pixels):
+    for i, (r, g, b, _) in enumerate(pixels_of(img)):
         if abs(r - bg[0]) + abs(g - bg[1]) + abs(b - bg[2]) > 24:
             x, y = i % w, i // w
             farthest = max(farthest, math.hypot(x - cx, y - cy))

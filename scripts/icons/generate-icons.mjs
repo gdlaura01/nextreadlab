@@ -13,7 +13,9 @@
 // - Python 3 con Pillow (pip install pillow), que hace el resto en build_icons.py.
 //
 // El logo se lee de BookMark en src/App.jsx, con los colores de PALETTE, para que
-// los iconos salgan siempre del mismo dibujo que se ve en la web.
+// los iconos salgan siempre del mismo dibujo que se ve en la web. En los tamaños
+// diminutos (16, 32 y 48 px) se aplica un ajuste óptico definido en icons.json:
+// trazo más grueso, libro algo más grande y, a 16 px, menos detalle.
 
 import { chromium } from "playwright-core";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -50,9 +52,26 @@ function readLogo() {
   if (!bookmark) throw new Error("No encuentro el SVG de BookMark en src/App.jsx");
   const [x, y, w, h] = bookmark[1].trim().split(/\s+/).map(Number);
 
-  // De JSX a SVG: colores de PALETTE en su sitio, fuera las clases de la animación
-  // y atributos en kebab-case (strokeWidth → stroke-width).
-  const svg = bookmark[2]
+  return { jsx: bookmark[2], palette, bg: palette.bg, center: [Math.round(x + w / 2), Math.round(y + h / 2)] };
+}
+
+// Del JSX del logo a SVG, con el ajuste óptico si lo hay: stroke multiplica el
+// grosor de los trazos, arcs dice qué arcos se quedan (1, 2, 3: de arriba abajo)
+// y dot si se dibuja el punto de encima del libro.
+function logoSvg({ jsx, palette }, { stroke = 1, arcs, dot = true } = {}) {
+  let source = jsx;
+  if (arcs) {
+    const arcPath = /<path className=\{animated \? "rr-arc rr-arc-(\d)" : undefined\}[\s\S]*?\/>/g;
+    if ((source.match(arcPath) || []).length !== 6) throw new Error("No encuentro los 6 arcos del logo en BookMark para simplificarlo");
+    source = source.replace(arcPath, (path, n) => (arcs.includes(Number(n)) ? path : ""));
+  }
+  if (!dot) {
+    if (!/<circle[^>]*\/>/.test(source)) throw new Error("No encuentro el punto del logo en BookMark");
+    source = source.replace(/<circle[^>]*\/>/, "");
+  }
+  // Colores de PALETTE en su sitio, fuera las clases de la animación y atributos
+  // en kebab-case (strokeWidth → stroke-width).
+  let svg = source
     .replace(/\{PALETTE\.(\w+)\}/g, (_, key) => {
       if (!palette[key]) throw new Error(`PALETTE.${key} no existe`);
       return `"${palette[key]}"`;
@@ -60,16 +79,18 @@ function readLogo() {
     .replace(/\s+className=\{[^}]*\}/g, "")
     .replace(/\s([a-z]+[A-Z][A-Za-z]*)=/g, (_, attr) => ` ${attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}=`);
   if (/[{}]/.test(svg)) throw new Error("Queda JSX sin traducir en el SVG del logo");
-
-  return { svg, bg: palette.bg, center: [Math.round(x + w / 2), Math.round(y + h / 2)] };
+  if (stroke !== 1) svg = svg.replace(/stroke-width="([\d.]+)"/g, (_, w) => `stroke-width="${Number(w) * stroke}"`);
+  return svg;
 }
 
-function iconSvg({ svg, bg, center: [cx, cy] }, px, shape) {
+function iconSvg(logo, px, shape, optical) {
+  const { bg, center: [cx, cy] } = logo;
   const r = CANVAS / 2;
   const background = shape === "round"
     ? `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${bg}"/>`
     : `<rect x="${cx - r}" y="${cy - r}" width="${CANVAS}" height="${CANVAS}" fill="${bg}"/>`;
-  const scale = shape === "maskable" ? MASKABLE_LOGO_SCALE : LOGO_SCALE;
+  const scale = optical?.scale ?? (shape === "maskable" ? MASKABLE_LOGO_SCALE : LOGO_SCALE);
+  const svg = logoSvg(logo, optical);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="${cx - r} ${cy - r} ${CANVAS} ${CANVAS}">
   ${background}
   <g transform="translate(${cx} ${cy}) scale(${scale}) translate(${-cx} ${-cy})">${svg}</g>
@@ -110,7 +131,9 @@ try {
   const page = await browser.newPage({ viewport: { width: 2048, height: 2048 } });
   for (const key of renders) {
     const [shape, size] = [key.split("-")[0], Number(key.split("-")[1])];
-    await page.setContent(`<html><body style="margin:0;background:transparent">${iconSvg(logo, size * SUPERSAMPLE, shape)}</body></html>`);
+    // Los ajustes ópticos son para los redondos diminutos (pestaña y .ico)
+    const optical = shape === "round" ? spec.optical.sizes[size] : undefined;
+    await page.setContent(`<html><body style="margin:0;background:transparent">${iconSvg(logo, size * SUPERSAMPLE, shape, optical)}</body></html>`);
     // omitBackground deja el lienzo transparente: el PNG sale en RGBA
     await page.locator("svg").screenshot({ path: join(renderDir, `raw-${key}.png`), omitBackground: true });
   }

@@ -193,6 +193,11 @@ Los iconos de `public/` salen todos del logo del libro, con tres formas:
   cuadrados opacos con el logo dentro de la zona segura (el círculo central del
   80 %), porque cada lanzador los recorta con su propia forma.
 
+En los tamaños diminutos de los redondos (16, 32 y 48 px, los de la pestaña y
+los `.ico`), el trazo normal del logo se pierde, así que llevan un ajuste óptico:
+trazo más grueso, libro algo más grande y, a 16 px, solo el arco terracota
+oscuro, sin el punto. Se define en `scripts/icons/icons.json` (`optical`).
+
 Si cambias el logo
 (el componente `BookMark` de `src/App.jsx`) o los colores de `PALETTE`,
 vuelve a generarlos con:
@@ -209,8 +214,8 @@ Edge y termina los archivos con Python. Necesitas:
 - **Python 3 con Pillow**: `pip install pillow`.
 
 Al terminar, comprueba cada archivo (y cada tamaño de los `.ico`) según su
-forma: los redondos, en RGBA con las cuatro esquinas transparentes y el centro
-opaco; los opacos, sin ningún píxel transparente; y los maskable, además, con
+forma: los redondos, en RGBA con las cuatro esquinas transparentes, el centro
+opaco y nada visible fuera del círculo; los opacos, sin ningún píxel transparente; y los maskable, además, con
 todo el logo dentro de la zona segura. Si alguno no cumple, el script termina
 con error. Los archivos, tamaños y formas están en `scripts/icons/icons.json`.
 
